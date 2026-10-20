@@ -1,0 +1,9 @@
+target/
+src-tauri/gen/
+# Proprietary vendor packages used for analysis must never be committed
+*.zip
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+*.nebo

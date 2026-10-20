@@ -1,0 +1,17 @@
+[package]
+name = "nebo-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Reader/writer for MyScript Nebo (.nebo) style iink packages, with Syncthing-safe saving"
+
+[dependencies]
+zip = { version = "2", default-features = false, features = ["deflate"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+quick-xml = "0.36"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
