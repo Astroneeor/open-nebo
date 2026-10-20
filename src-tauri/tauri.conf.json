@@ -12,7 +12,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
     "fileAssociations": [
       { "ext": ["nebo"], "mimeType": "application/vnd.myscript.nebo", "name": "Nebo notebook" }
     ]
