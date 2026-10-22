@@ -28,7 +28,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use base64::Engine;
 
-use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Stroke, View};
+use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -61,6 +61,7 @@ struct ObjectsFile {
 enum ObjectMeta {
     Image { id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String },
     Graph(GraphObject),
+    Shape(Shape),
 }
 
 fn ext_for(mime: &str) -> Result<&'static str, Error> {
@@ -137,6 +138,11 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
                     PageObject::Graph(g) => {
                         safe_id(&g.id)?;
                         metas.push(ObjectMeta::Graph(g.clone()));
+                        continue;
+                    }
+                    PageObject::Shape(s) => {
+                        safe_id(&s.id)?;
+                        metas.push(ObjectMeta::Shape(s.clone()));
                         continue;
                     }
                 };
@@ -269,6 +275,11 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                     ObjectMeta::Graph(g) => {
                         safe_id(&g.id)?;
                         objects.push(PageObject::Graph(g));
+                        continue;
+                    }
+                    ObjectMeta::Shape(s) => {
+                        safe_id(&s.id)?;
+                        objects.push(PageObject::Shape(s));
                         continue;
                     }
                 };

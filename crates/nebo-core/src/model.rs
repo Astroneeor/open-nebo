@@ -65,7 +65,35 @@ pub struct Page {
 pub enum PageObject {
     Image(ImageObject),
     Graph(GraphObject),
+    Shape(Shape),
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ShapeKind {
+    Line,
+    Arrow,
+    Ellipse,
+    Rect,
+    Triangle,
+}
+
+/// A clean geometric shape produced by smart-shape recognition.
+///
+/// `points` by kind: `line`/`arrow` = `[start, end]` (arrow head at `end`);
+/// `rect` = 4 corners in order; `triangle` = 3 corners;
+/// `ellipse` = `[center, [rx, ry]]` (axis-aligned).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Shape {
+    pub id: String,
+    pub kind: ShapeKind,
+    #[serde(default = "default_color")]
+    pub color: String,
+    #[serde(default = "default_width")]
+    pub width: f32,
+    pub points: Vec<[f32; 2]>,
+}
+
 
 /// A coordinate grid / graph-paper block. Height follows from `size` (the
 /// width in page units) and the axis ranges, so cells stay square.

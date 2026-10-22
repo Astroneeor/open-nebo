@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, GraphObject, ImageObject, PageObject, Point, Stroke, View};
+use nebo_core::{package, vault, Document, Error, GraphObject, ImageObject, PageObject, Point, Shape, ShapeKind, Stroke, View};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -189,4 +189,15 @@ fn graph_flags_default_when_missing() {
     let PageObject::Graph(g) = o else { panic!("not a graph") };
     assert!(g.labels && g.axes && g.grid);
     assert_eq!(g.step, 1.0);
+}
+
+#[test]
+fn shape_objects_roundtrip_with_other_objects() {
+    let mut d = with_image();
+    d.pages[0].objects.push(graph("g1", -5.0, 5.0));
+    d.pages[0].objects.push(PageObject::Shape(Shape {
+        id: "s1".into(), kind: ShapeKind::Arrow, color: "#ff0000".into(), width: 3.0,
+        points: vec![[0.0, 0.0], [50.0, 25.0]],
+    }));
+    assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
 }

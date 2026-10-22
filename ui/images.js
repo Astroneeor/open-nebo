@@ -223,5 +223,6 @@ const Images = (() => {
     sel.id = null; cache.delete(o.id); touch(); render();
   });
 
-  return { draw, overlay, undo, logStroke };
+  function logAdd(pageId, obj) { resetLogIfNewDoc(); push({ k: "add", pageId, obj }); }
+  return { draw, overlay, undo, logStroke, logAdd };
 })();

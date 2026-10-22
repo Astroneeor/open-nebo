@@ -7,7 +7,10 @@ const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 
 const S = { vault: null, entries: [], path: null, doc: null, rev: null, page: 0,
-            dirty: false, tool: "pen", current: null, saveTimer: null, saving: false };
+            dirty: false, tool: "pen", current: null, saveTimer: null, saving: false,
+            smart: lsGet("smartShapes") === "1", snap: null, holdTimer: null };
+function lsGet(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (_) { /* storage may be unavailable */ } }
 
 const status = (t) => { $("status").textContent = t; };
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
@@ -65,7 +68,9 @@ function render() {
   Images.draw(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
   page().strokes.forEach(drawStroke);
-  if (S.current) drawStroke(S.current);
+  (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
+  if (S.snap) Shapes.drawShape(ctx, S.snap);
+  else if (S.current) drawStroke(S.current);
   Images.overlay(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.drawOverlay(ctx);
   V.end(ctx);
@@ -94,7 +99,26 @@ const pos = (ev) => V.toWorld(ev);
 function eraseAt(p) {
   const r = 14 / V.zoom, strokes = page().strokes;
   const keep = strokes.filter((s) => !s.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < r + s.width));
-  if (keep.length !== strokes.length) { page().strokes = keep; touch(); render(); }
+  const objs = page().objects || [];
+  const keepObjs = objs.filter((o) => !(o.type === "shape" && Shapes.hitShape(o, p, r)));
+  if (keep.length !== strokes.length || keepObjs.length !== objs.length) {
+    page().strokes = keep; page().objects = keepObjs; touch(); render();
+  }
+}
+
+// ---------- smart shapes ----------
+function snapOf(stroke) {
+  const r = Shapes.recognize(stroke.points);
+  return r && { type: "shape", id: uid(), kind: r.kind, color: stroke.color, width: stroke.width, points: r.points };
+}
+function cancelHold() { clearTimeout(S.holdTimer); S.holdTimer = null; S.snap = null; }
+function armHold() {
+  clearTimeout(S.holdTimer);
+  S.holdTimer = setTimeout(() => {
+    if (!S.current) return;
+    S.snap = snapOf(S.current);
+    if (S.snap) render();
+  }, Shapes.HOLD_MS);
 }
 
 cv.addEventListener("pointerdown", (ev) => {
@@ -106,6 +130,7 @@ cv.addEventListener("pointerdown", (ev) => {
   S.t0 = performance.now();
   S.current = { id: uid(), color: $("color").value, width: +$("width").value,
                 points: [{ ...p, t: 0, p: ev.pressure || 0.5 }] };
+  S.holdOrigin = p; cancelHold(); if (S.smart) armHold();
   render();
 });
 cv.addEventListener("pointermove", (ev) => {
@@ -114,12 +139,27 @@ cv.addEventListener("pointermove", (ev) => {
   if (S.erasing) { evs.forEach((e) => eraseAt(pos(e))); return; }
   if (!S.current) return;
   for (const e of evs) S.current.points.push({ ...pos(e), t: Math.round(performance.now() - S.t0), p: e.pressure || 0.5 });
+  if (S.smart) {
+    // moving on after the hold-snap preview cancels it; otherwise re-arm the hold timer
+    const q = S.current.points[S.current.points.length - 1];
+    if (Math.hypot(q.x - S.holdOrigin.x, q.y - S.holdOrigin.y) > Shapes.HOLD_RADIUS) { S.holdOrigin = q; cancelHold(); armHold(); }
+  }
   render();
 });
 const end = (ev) => {
   if (V.up(ev)) return;
   S.erasing = false;
-  if (S.current) { page().strokes.push(S.current); S.current = null; Images.logStroke(); touch(); render(); }
+  const s = S.current;
+  if (!s) return;
+  const shape = S.smart ? (S.snap || snapOf(s)) : null;
+  cancelHold(); S.current = null;
+  if (shape) {
+    (page().objects || (page().objects = [])).push(shape);
+    Images.logAdd(page().id, shape);
+  } else {
+    page().strokes.push(s); Images.logStroke();
+  }
+  touch(); render();
 };
 cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
 
@@ -127,6 +167,11 @@ cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end)
 function tool(t) { S.tool = t; $("pen").classList.toggle("on", t === "pen"); $("eraser").classList.toggle("on", t === "eraser"); }
 $("pen").onclick = () => tool("pen"); $("eraser").onclick = () => tool("eraser");
 $("undo").onclick = () => { if (S.doc && !Images.undo() && page().strokes.pop()) { touch(); render(); } };
+$("smart").classList.toggle("on", S.smart);
+$("smart").onclick = () => {
+  S.smart = !S.smart; lsSet("smartShapes", S.smart ? "1" : "0");
+  $("smart").classList.toggle("on", S.smart); if (!S.smart) cancelHold(); render();
+};
 $("prev").onclick = () => { if (S.doc && S.page > 0) { S.page--; render(); } };
 $("next").onclick = () => { if (S.doc && S.page < S.doc.pages.length - 1) { S.page++; render(); } };
 $("addPage").onclick = () => {
