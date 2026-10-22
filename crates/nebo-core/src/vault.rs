@@ -1,4 +1,4 @@
-//! Safe handling of `.nebo` files inside a folder synced by Syncthing.
+//! Safe handling of `.onb` notebooks (and legacy `.nebo` files) inside a folder synced by Syncthing.
 //!
 //! * Saves are atomic: write `.syncthing.<name>.tmp` (a name Syncthing never
 //!   syncs), fsync, rename over the target.
@@ -15,21 +15,57 @@ use sha2::{Digest, Sha256};
 
 use crate::{package, Document, Error};
 
-pub const EXT: &str = "nebo";
+/// Extension of notebooks Open Nebo writes ("Open Nebo Book").
+pub const EXT: &str = "onb";
+/// Extension used by Open Nebo 0.1.x. Still opened; never written.
+pub const LEGACY_EXT: &str = "nebo";
+
+fn has_ext(name: &str, ext: &str) -> bool {
+    Path::new(name).extension().is_some_and(|x| x.eq_ignore_ascii_case(ext))
+}
+
+/// True for file names the app treats as notebooks (current or legacy extension).
+pub fn is_notebook_name(name: &str) -> bool {
+    has_ext(name, EXT) || has_ext(name, LEGACY_EXT)
+}
+
+/// The `.onb` file a legacy `.nebo` path migrates to (same directory and stem).
+pub fn migrated_path(path: &Path) -> PathBuf {
+    path.with_extension(EXT)
+}
+
+fn is_legacy(path: &Path) -> bool {
+    path.file_name().is_some_and(|n| has_ext(&n.to_string_lossy(), LEGACY_EXT))
+}
+
+/// The file that currently holds the notebook for `path`: for a legacy path whose
+/// `.onb` twin exists, the twin; otherwise `path` itself.
+fn resolve(path: &Path) -> PathBuf {
+    if is_legacy(path) && migrated_path(path).exists() {
+        migrated_path(path)
+    } else {
+        path.to_path_buf()
+    }
+}
 
 pub fn revision(bytes: &[u8]) -> String {
     Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
 }
 
 pub fn load(path: &Path) -> Result<(Document, String), Error> {
-    let bytes = fs::read(path)?;
+    let bytes = fs::read(resolve(path))?;
     Ok((package::read(&bytes)?, revision(&bytes)))
 }
 
 /// Saves `doc` to `path`. `base_rev` is the revision from the last load/save
 /// (`None` for a brand new file, which must not already exist). Returns the new revision.
+///
+/// Saving to a legacy `.nebo` path writes the same-named `.onb` next to it and leaves the
+/// original untouched; later loads and saves of that path follow the `.onb`.
 pub fn save(path: &Path, doc: &Document, base_rev: Option<&str>) -> Result<String, Error> {
-    match (fs::read(path), base_rev) {
+    let target = if is_legacy(path) { migrated_path(path) } else { path.to_path_buf() };
+    let existing = resolve(path);
+    match (fs::read(&existing), base_rev) {
         (Ok(cur), Some(rev)) if revision(&cur) != rev => {
             return Err(Error::Conflict(path.display().to_string()))
         }
@@ -41,7 +77,7 @@ pub fn save(path: &Path, doc: &Document, base_rev: Option<&str>) -> Result<Strin
     }
 
     let bytes = package::write(doc)?;
-    write_atomic(path, &bytes)?;
+    write_atomic(&target, &bytes)?;
     Ok(revision(&bytes))
 }
 
@@ -81,7 +117,8 @@ pub fn is_conflict_name(name: &str) -> bool {
     name.contains(".sync-conflict-")
 }
 
-/// Lists `.nebo` files under `root` (recursively), conflict copies included and flagged.
+/// Lists notebooks (`.onb`, plus legacy `.nebo` not yet migrated) under `root` (recursively),
+/// conflict copies included and flagged.
 pub fn list(root: &Path) -> Result<Vec<Entry>, Error> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -96,7 +133,11 @@ pub fn list(root: &Path) -> Result<Vec<Entry>, Error> {
             let ft = e.file_type()?;
             if ft.is_dir() {
                 stack.push(e.path());
-            } else if Path::new(&name).extension().is_some_and(|x| x.eq_ignore_ascii_case(EXT)) {
+            } else if is_notebook_name(&name) {
+                // A legacy file is hidden once its same-named `.onb` exists.
+                if has_ext(&name, LEGACY_EXT) && migrated_path(&e.path()).exists() {
+                    continue;
+                }
                 let modified = e
                     .metadata()?
                     .modified()

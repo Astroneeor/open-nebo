@@ -14,7 +14,7 @@
     "targets": "all",
     "icon": ["icons/icon.png", "icons/icon.ico"],
     "fileAssociations": [
-      { "ext": ["nebo"], "mimeType": "application/vnd.myscript.nebo", "name": "Nebo notebook" }
+      { "ext": ["onb"], "mimeType": "application/vnd.opennebo+zip", "name": "Open Nebo notebook" }
     ]
   }
 }

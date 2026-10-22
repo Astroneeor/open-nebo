@@ -92,7 +92,7 @@ fn binary_variants_report_unsupported() {
 #[test]
 fn stale_revision_is_a_conflict() {
     let dir = tempfile::tempdir().unwrap();
-    let p = dir.path().join("a.nebo");
+    let p = dir.path().join("a.onb");
     let rev1 = vault::save(&p, &sample(), None).unwrap();
 
     // Simulate Syncthing delivering a newer version from another device.
@@ -109,7 +109,7 @@ fn stale_revision_is_a_conflict() {
 #[test]
 fn new_file_does_not_overwrite_existing() {
     let dir = tempfile::tempdir().unwrap();
-    let p = dir.path().join("a.nebo");
+    let p = dir.path().join("a.onb");
     vault::save(&p, &sample(), None).unwrap();
     assert!(matches!(vault::save(&p, &sample(), None), Err(Error::Conflict(_))));
 }
@@ -118,7 +118,7 @@ fn new_file_does_not_overwrite_existing() {
 fn list_skips_hidden_and_flags_conflicts() {
     let dir = tempfile::tempdir().unwrap();
     let bytes = package::write(&sample()).unwrap();
-    for n in ["a.nebo", "a.sync-conflict-20260101-000000-ABC.nebo", ".syncthing.a.nebo.tmp", "note.txt"] {
+    for n in ["a.onb", "a.sync-conflict-20260101-000000-ABC.onb", ".syncthing.a.onb.tmp", "note.txt"] {
         std::fs::write(dir.path().join(n), &bytes).unwrap();
     }
     let l = vault::list(dir.path()).unwrap();
@@ -129,7 +129,7 @@ fn list_skips_hidden_and_flags_conflicts() {
 #[test]
 fn no_temp_file_left_after_save() {
     let dir = tempfile::tempdir().unwrap();
-    vault::save(&dir.path().join("a.nebo"), &sample(), None).unwrap();
+    vault::save(&dir.path().join("a.onb"), &sample(), None).unwrap();
     let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
     assert_eq!(names.len(), 1);
 }

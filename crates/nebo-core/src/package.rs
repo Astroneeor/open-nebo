@@ -1,10 +1,11 @@
 //! iink-style package container.
 //!
-//! Layout (recovered from strings in the Nebo 6.3 DLLs, NOT yet verified
-//! against a real file):
+//! Layout (originally modelled on MyScript iink packages; Open Nebo's format is now
+//! its own and makes no promise of compatibility with the real Nebo app):
 //!
 //! ```text
-//! mimeType                 application/vnd.myscript.nebo (stored, first)
+//! mimeType                 application/vnd.opennebo+zip (stored, first); the legacy
+//!                          application/vnd.myscript.nebo written by 0.1.x is still read
 //! meta.json                {"format-version": ..}
 //! rel.json                 object relations
 //! fileindex.json           per-file index
@@ -31,9 +32,12 @@ use base64::Engine;
 use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
 use crate::Error;
 
-pub const MIME: &str = "application/vnd.myscript.nebo";
+/// MIME type written into every new package.
+pub const MIME: &str = "application/vnd.opennebo+zip";
+/// MIME type written by Open Nebo 0.1.x; accepted on read only.
+pub const LEGACY_MIME: &str = "application/vnd.myscript.nebo";
 pub const FORMAT_VERSION: &str = "1";
-const INDEX_NS: &str = "http://www.myscript.com/ns/myscript/document";
+const INDEX_NS: &str = "https://github.com/Astroneeor/open-nebo/ns/document";
 
 #[derive(Serialize, Deserialize)]
 struct Meta {
@@ -280,7 +284,7 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
     let mut zip = ZipArchive::new(Cursor::new(bytes))?;
 
     let mime = String::from_utf8_lossy(&read_entry(&mut zip, "mimeType")?).trim().to_string();
-    if mime != MIME {
+    if mime != MIME && mime != LEGACY_MIME {
         return Err(Error::Invalid(format!("unexpected mimeType {mime:?}")));
     }
 

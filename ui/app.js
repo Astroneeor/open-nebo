@@ -23,7 +23,7 @@ async function refreshList() {
   const ul = $("list"); ul.replaceChildren();
   for (const e of S.entries) {
     const li = document.createElement("li");
-    li.textContent = e.name.replace(/\.nebo$/i, "");
+    li.textContent = e.name.replace(/\.(onb|nebo)$/i, "");
     if (e.is_conflict) li.classList.add("conflict");
     if (e.path === S.path) li.classList.add("sel");
     li.onclick = () => openPath(e.path);
@@ -201,7 +201,7 @@ $("newForm").onsubmit = async (ev) => {
   try {
     await invoke("new_doc", { dir: S.vault, title });
     await refreshList();
-    const e = S.entries.find((x) => x.name === title.replace(/[^\p{L}\p{N} _-]/gu, "_") + ".nebo");
+    const e = S.entries.find((x) => x.name === title.replace(/[^\p{L}\p{N} _-]/gu, "_") + ".onb");
     if (e) openPath(e.path);
   } catch (e) { banner("Cannot create: " + e); }
 };
