@@ -1,5 +1,11 @@
 # Nebo (.nebo) reverse-engineering findings
 
+> **Status: historical.** Open Nebo's notebook format is now its own (`.onb`, MIME
+> `application/vnd.opennebo+zip`) and compatibility with the real Nebo app's files is out of
+> scope. These notes are kept for reference only; nothing here is verified against a real
+> `.nebo` file, and the app no longer claims MyScript's MIME type or the `.nebo` association.
+> Files written by Open Nebo 0.1.x (`.nebo`) are still readable and migrate to `.onb` on save.
+
 Target: `VisionObjects.MyScriptNebo_6.3.17303.0` (MSIX bundle, x64), SHA-256 of the
 supplied zip: `a020c7e6b75093b552bc5b6c8f8c22761658650839f8813b8c6e52fdc1a7e4be`.
 

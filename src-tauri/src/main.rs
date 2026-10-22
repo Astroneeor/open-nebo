@@ -225,7 +225,7 @@ fn watch_vault(dir: String, app: tauri::AppHandle, state: State<AppState>) -> Re
             let relevant = ev.paths.iter().any(|p| {
                 p.file_name().is_some_and(|n| {
                     let n = n.to_string_lossy();
-                    !n.starts_with('.') && n.ends_with(".nebo") || n.contains(".sync-conflict-")
+                    !n.starts_with('.') && vault::is_notebook_name(&n) || n.contains(".sync-conflict-")
                 })
             });
             if relevant {

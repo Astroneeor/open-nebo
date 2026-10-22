@@ -1,11 +1,11 @@
 # Open Nebo
 
-An open-source, cross-platform (Linux + Windows) notebook app that reads and writes
-`.nebo`-style MyScript iink packages and is built to live in a folder synced by
-[Syncthing](https://syncthing.net), the same way an Obsidian vault does.
+An open-source, cross-platform (Linux + Windows) handwritten-notebook app. Notebooks are
+`.onb` files ("Open Nebo Book", a zip, MIME `application/vnd.opennebo+zip`) that live in a
+folder synced by [Syncthing](https://syncthing.net), the same way an Obsidian vault does.
 
 **Status: early.** Ink capture, pages, eraser, undo, autosave and the sync-safety
-layer work. See limitations below before pointing it at real Nebo notebooks.
+layer work. See limitations below.
 
 ## Layout
 
@@ -23,6 +23,8 @@ choose the same folder in the app. The app:
   (revision check) and tells you instead of clobbering a synced version;
 - reloads open notebooks when Syncthing delivers a newer version and you have no unsaved edits;
 - lists `*.sync-conflict-*` copies, flagged;
+- opens legacy `.nebo` files written by Open Nebo 0.1.x; saving writes the same-named `.onb`
+  next to the original (which is left untouched and hidden from the list once the `.onb` exists);
 - keeps no lock files in the folder. "Create .stignore" adds a minimal ignore file.
 
 ## Build
@@ -38,11 +40,10 @@ Linux needs `webkit2gtk-4.1`. Windows builds come from the GitHub Actions workfl
 
 ## Limitations (important)
 
-- **Compatibility with files saved by the real Nebo is unverified.** The container layout
-  was inferred from strings in the Nebo 6.3 binaries; no real `.nebo` file has been tested.
-  The `ink.jink` JSON schema written here is this project's own.
-- Files using Nebo's binary members (`*.bdom`, `*.bink`) are rejected with a clear error,
-  not guessed at. Unknown archive members are preserved on save.
+- **The format is Open Nebo's own.** It is loosely modelled on iink-style packages but makes no
+  promise of compatibility with MyScript's Nebo app; opening real Nebo notebooks is out of scope.
+  Packages with binary members (`*.bdom`, `*.bink`) are rejected with a clear error, not guessed
+  at. Unknown archive members are preserved on save.
 - No handwriting recognition. MyScript's engine is proprietary; a recognizer plug-in point is future work.
 - PDF import/export is raster-only: imported pages are images (no text selection/links), export is a page image per page. JPEG 2000 images inside PDFs may not render. No shapes, math, or text-block editing.
 - Not tested with a physical pen/touch device.
