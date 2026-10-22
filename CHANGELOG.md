@@ -7,6 +7,10 @@ and APIs may change in any release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-22
+
+First packaged release (same feature set as 0.1.0; installers for Linux and Windows).
+
 ## [0.1.0] - 2026-10-20
 
 ### Added
@@ -20,5 +24,6 @@ and APIs may change in any release.
 - Compatibility with files written by the real Nebo is unverified (no sample file tested).
 - Binary `.bdom`/`.bink` members are rejected. No handwriting recognition.
 
-[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Astroneeor/open-nebo/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Astroneeor/open-nebo/releases/tag/v0.1.0
