@@ -34,17 +34,57 @@ fn default_width() -> f32 {
     2.0
 }
 
+/// A coordinate grid / graph-paper block. Height follows from `size` (the
+/// width in page units) and the axis ranges, so cells stay square.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GraphObject {
+    pub id: String,
+    /// Top-left corner in page units.
+    pub x: f32,
+    pub y: f32,
+    pub size: f32,
+    pub xmin: f32,
+    pub xmax: f32,
+    pub ymin: f32,
+    pub ymax: f32,
+    #[serde(default = "default_step")]
+    pub step: f32,
+    #[serde(default = "yes")]
+    pub labels: bool,
+    #[serde(default = "yes")]
+    pub axes: bool,
+    #[serde(default = "yes")]
+    pub grid: bool,
+}
+
+fn default_step() -> f32 {
+    1.0
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// Vector objects placed on a page, stored in `pages/<id>/objects.json`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Object {
+    Graph(GraphObject),
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Page {
     pub id: String,
     pub width: f32,
     pub height: f32,
     pub strokes: Vec<Stroke>,
+    #[serde(default)]
+    pub objects: Vec<Object>,
 }
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new(), objects: Vec::new() }
     }
 }
 

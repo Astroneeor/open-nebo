@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, Point, Stroke};
+use nebo_core::{package, vault, Document, Error, GraphObject, Object, Point, Stroke};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -97,4 +97,38 @@ fn no_temp_file_left_after_save() {
     vault::save(&dir.path().join("a.nebo"), &sample(), None).unwrap();
     let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
     assert_eq!(names.len(), 1);
+}
+
+fn graph(id: &str, lo: f32, hi: f32) -> Object {
+    Object::Graph(GraphObject {
+        id: id.into(), x: 10.0, y: 20.0, size: 400.0,
+        xmin: lo, xmax: hi, ymin: lo, ymax: hi, step: 1.0, labels: true, axes: true, grid: true,
+    })
+}
+
+#[test]
+fn graph_objects_roundtrip() {
+    let mut d = sample();
+    d.pages[0].objects.push(graph("g1", -5.0, 5.0));
+    d.pages[0].objects.push(graph("g2", -10.0, 10.0));
+    assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
+}
+
+#[test]
+fn pages_without_objects_write_no_objects_member() {
+    // Same layout as 0.1.x files, which also must open with no objects.
+    let bytes = package::write(&sample()).unwrap();
+    let z = zip::ZipArchive::new(std::io::Cursor::new(bytes.clone())).unwrap();
+    assert!(!z.file_names().any(|n| n.ends_with("objects.json")));
+    assert!(package::read(&bytes).unwrap().pages[0].objects.is_empty());
+}
+
+#[test]
+fn graph_flags_default_when_missing() {
+    let o: Object = serde_json::from_str(
+        r#"{"type":"graph","id":"g","x":0,"y":0,"size":100,"xmin":0,"xmax":5,"ymin":0,"ymax":5}"#,
+    ).unwrap();
+    let Object::Graph(g) = o;
+    assert!(g.labels && g.axes && g.grid);
+    assert_eq!(g.step, 1.0);
 }

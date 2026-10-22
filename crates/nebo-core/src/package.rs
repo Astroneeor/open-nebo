@@ -11,6 +11,7 @@
 //! index.xml                document index (index.bdom is the binary form)
 //! pages/<id>/page.xml      page tree        (page.bdom is the binary form)
 //! pages/<id>/ink.jink      stroke data      (ink.bink is the binary form)
+//! pages/<id>/objects.json  vector objects (graphs); this project's own, omitted when empty
 //! style.css
 //! ```
 //!
@@ -26,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::model::{Document, OpaqueEntry, Page, Stroke};
+use crate::model::{Document, Object, OpaqueEntry, Page, Stroke};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -39,6 +40,11 @@ struct Meta {
     format_version: String,
     title: String,
     generator: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ObjectsFile {
+    objects: Vec<Object>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -80,6 +86,9 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         index.push_str(&format!("    <page id=\"{}\"/>\n", esc(id)));
         files.push(format!("pages/{id}/page.xml"));
         files.push(format!("pages/{id}/ink.jink"));
+        if !p.objects.is_empty() {
+            files.push(format!("pages/{id}/objects.json"));
+        }
     }
     index.push_str("  </pages>\n</document>\n");
 
@@ -100,6 +109,10 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         zw.write_all(page_xml.as_bytes())?;
         zw.start_file(format!("pages/{id}/ink.jink"), deflated)?;
         zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone() })?)?;
+        if !p.objects.is_empty() {
+            zw.start_file(format!("pages/{id}/objects.json"), deflated)?;
+            zw.write_all(&serde_json::to_vec(&ObjectsFile { objects: p.objects.clone() })?)?;
+        }
     }
 
     for o in &doc.opaque {
@@ -196,9 +209,15 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         let (px, ink) = (format!("pages/{id}/page.xml"), format!("pages/{id}/ink.jink"));
         let (w, h) = page_dims(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0));
         let strokes = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?.strokes;
+        let obj = format!("pages/{id}/objects.json");
+        let objects = match read_entry(&mut zip, &obj) {
+            Ok(b) => serde_json::from_slice::<ObjectsFile>(&b)?.objects,
+            Err(_) => Vec::new(),
+        };
         claimed.push(px);
         claimed.push(ink);
-        pages.push(Page { id: id.clone(), width: w, height: h, strokes });
+        claimed.push(obj);
+        pages.push(Page { id: id.clone(), width: w, height: h, strokes, objects });
     }
 
     let mut opaque = Vec::new();

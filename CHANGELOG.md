@@ -7,6 +7,12 @@ and APIs may change in any release.
 
 ## [Unreleased]
 
+### Added
+- Insert menu with coordinate grids (10x10 for -5..5, 20x20 for -10..10), blank axes and
+  configurable graph paper. Graphs are vector page objects (`pages/<id>/objects.json`) that
+  can be selected, moved, resized, duplicated, deleted and edited (ranges, step, grid/axes/numbers).
+- Select tool.
+
 ## [0.1.1] - 2026-10-22
 
 First packaged release (same feature set as 0.1.0; installers for Linux and Windows).

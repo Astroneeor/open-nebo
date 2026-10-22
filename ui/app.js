@@ -68,8 +68,10 @@ function render() {
   if (!S.doc) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
   fit();
   ctx.clearRect(0, 0, cv.width, cv.height);
+  if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
   page().strokes.forEach(drawStroke);
   if (S.current) drawStroke(S.current);
+  if (typeof Graphs !== "undefined") Graphs.drawOverlay(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
 
