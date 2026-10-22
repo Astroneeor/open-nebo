@@ -51,6 +51,9 @@ pub struct Page {
     pub id: String,
     pub width: f32,
     pub height: f32,
+    /// Archive member under `media/` drawn behind the ink (e.g. an imported PDF page).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
     pub strokes: Vec<Stroke>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
@@ -144,7 +147,7 @@ pub struct ImageObject {
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new(), view: None, objects: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, strokes: Vec::new(), view: None, objects: Vec::new() }
     }
 }
 

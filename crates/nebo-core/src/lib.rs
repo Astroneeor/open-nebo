@@ -1,5 +1,6 @@
 pub mod model;
 pub mod package;
+pub mod pdf;
 pub mod vault;
 
 pub use model::{Document, GraphObject, ImageObject, Page, PageObject, Point, Shape, ShapeKind, Stroke, View};

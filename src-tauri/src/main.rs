@@ -5,9 +5,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use nebo_core::model::OpaqueEntry;
-use nebo_core::{vault, Document};
+use nebo_core::pdf::PdfPage;
+use nebo_core::{package, vault, Document};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
+use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{Emitter, State};
 
 #[derive(Default)]
@@ -15,12 +17,22 @@ struct AppState {
     watcher: Mutex<Option<RecommendedWatcher>>,
     /// Archive members we don't interpret, kept per open file so saves don't drop them.
     opaque: Mutex<HashMap<PathBuf, Vec<OpaqueEntry>>>,
+    /// Notebook currently receiving imported page images (see `begin_pdf_import`).
+    import_path: Mutex<Option<PathBuf>>,
+    /// Page images collected for a PDF export (see `export_pdf_*`).
+    export_pages: Mutex<Vec<PdfPage>>,
 }
 
 #[derive(Serialize)]
 struct Opened {
     doc: Document,
     rev: String,
+}
+
+#[derive(Serialize)]
+struct ImportStarted {
+    path: String,
+    doc: Document,
 }
 
 type Res<T> = Result<T, String>;
@@ -58,20 +70,142 @@ fn save_doc(path: String, mut doc: Document, rev: Option<String>, state: State<A
     vault::save(&p, &doc, rev.as_deref()).map_err(err)
 }
 
-#[tauri::command]
-fn new_doc(dir: String, title: String) -> Res<Opened> {
+fn safe_title(title: &str) -> Res<String> {
     let safe: String = title
         .chars()
         .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
         .collect();
-    let safe = safe.trim();
+    let safe = safe.trim().to_string();
     if safe.is_empty() || safe.starts_with('.') {
         return Err("invalid title".into());
     }
+    Ok(safe)
+}
+
+#[tauri::command]
+fn new_doc(dir: String, title: String) -> Res<Opened> {
+    let safe = safe_title(&title)?;
     let path = Path::new(&dir).join(format!("{safe}.{}", vault::EXT));
     let doc = Document::new(title);
     let rev = vault::save(&path, &doc, None).map_err(err)?;
     Ok(Opened { doc, rev })
+}
+
+/// Webviews that can't use the binary IPC channel deliver the bytes as a JSON number array.
+fn raw_body(req: &Request<'_>) -> Res<Vec<u8>> {
+    match req.body() {
+        InvokeBody::Raw(b) => Ok(b.clone()),
+        InvokeBody::Json(serde_json::Value::Array(a)) => a
+            .iter()
+            .map(|v| v.as_u64().and_then(|n| u8::try_from(n).ok()).ok_or_else(|| "bad byte in body".to_string()))
+            .collect(),
+        _ => Err("expected a binary body".into()),
+    }
+}
+
+fn header_num<T: std::str::FromStr>(req: &Request<'_>, name: &str) -> Res<T> {
+    req.headers()
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse().ok())
+        .ok_or_else(|| format!("missing header {name}"))
+}
+
+/// Reads a user-chosen PDF so the UI can render it. Raw bytes, not a JSON array.
+#[tauri::command]
+fn read_pdf(path: String) -> Res<Response> {
+    let p = Path::new(&path);
+    if !p.extension().is_some_and(|x| x.eq_ignore_ascii_case("pdf")) {
+        return Err("not a .pdf file".into());
+    }
+    Ok(Response::new(std::fs::read(p).map_err(err)?))
+}
+
+/// Starts a notebook for an imported PDF: one page per entry of `sizes`, each with
+/// `media/page-N.png` as background. Not saved yet; the UI stages the images with
+/// `put_media` and then saves with `save_doc` and no revision.
+#[tauri::command]
+fn begin_pdf_import(dir: String, title: String, sizes: Vec<(f32, f32)>, state: State<AppState>) -> Res<ImportStarted> {
+    if sizes.is_empty() || sizes.len() > 2000 {
+        return Err("PDF has no pages (or too many)".into());
+    }
+    let safe = safe_title(&title)?;
+    let mut path = Path::new(&dir).join(format!("{safe}.{}", vault::EXT));
+    let mut n = 2;
+    while path.exists() {
+        path = Path::new(&dir).join(format!("{safe} {n}.{}", vault::EXT));
+        n += 1;
+    }
+    let mut doc = Document::new(title);
+    doc.pages.clear();
+    for (i, (w, h)) in sizes.iter().enumerate() {
+        let mut pg = nebo_core::Page::new(format!("page-{}", i + 1));
+        pg.width = *w;
+        pg.height = *h;
+        pg.background = Some(format!("media/page-{}.png", i + 1));
+        doc.pages.push(pg);
+    }
+    state.opaque.lock().unwrap().insert(path.clone(), Vec::new());
+    *state.import_path.lock().unwrap() = Some(path.clone());
+    Ok(ImportStarted { path: path.display().to_string(), doc })
+}
+
+/// Raw body = image bytes; header `name` = archive path under `media/`.
+#[tauri::command]
+fn put_media(request: Request<'_>, state: State<AppState>) -> Res<()> {
+    let name = request
+        .headers()
+        .get("name")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("missing header name")?
+        .to_string();
+    package::safe_media(&name).map_err(err)?;
+    let data = raw_body(&request)?;
+    let path = state.import_path.lock().unwrap().clone().ok_or("no import in progress")?;
+    let mut map = state.opaque.lock().unwrap();
+    let entries = map.get_mut(&path).ok_or("no import in progress")?;
+    entries.retain(|e| e.name != name);
+    entries.push(OpaqueEntry { name, data });
+    Ok(())
+}
+
+#[tauri::command]
+fn read_media(path: String, name: String, state: State<AppState>) -> Res<Response> {
+    package::safe_media(&name).map_err(err)?;
+    let map = state.opaque.lock().unwrap();
+    let e = map
+        .get(&PathBuf::from(&path))
+        .and_then(|v| v.iter().find(|e| e.name == name))
+        .ok_or("media not found")?;
+    Ok(Response::new(e.data.clone()))
+}
+
+#[tauri::command]
+fn export_pdf_begin(state: State<AppState>) {
+    state.export_pages.lock().unwrap().clear();
+}
+
+/// Raw body = JPEG of one composited page; headers `width`, `height` in pixels.
+#[tauri::command]
+fn export_pdf_page(request: Request<'_>, state: State<AppState>) -> Res<()> {
+    let page = PdfPage {
+        width_px: header_num(&request, "width")?,
+        height_px: header_num(&request, "height")?,
+        jpeg: raw_body(&request)?,
+    };
+    state.export_pages.lock().unwrap().push(page);
+    Ok(())
+}
+
+#[tauri::command]
+fn export_pdf_finish(path: String, state: State<AppState>) -> Res<()> {
+    let p = PathBuf::from(&path);
+    if !p.extension().is_some_and(|x| x.eq_ignore_ascii_case("pdf")) {
+        return Err("export path must end in .pdf".into());
+    }
+    let pages = std::mem::take(&mut *state.export_pages.lock().unwrap());
+    let bytes = nebo_core::pdf::build(&pages).map_err(err)?;
+    vault::write_atomic(&p, &bytes).map_err(err)
 }
 
 #[tauri::command]
@@ -110,7 +244,8 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            default_vault, list_vault, open_doc, save_doc, new_doc, write_stignore, watch_vault
+            default_vault, list_vault, open_doc, save_doc, new_doc, write_stignore, watch_vault,
+            read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Nebo");

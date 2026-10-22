@@ -85,6 +85,17 @@ fn safe_id(id: &str) -> Result<&str, Error> {
     if ok { Ok(id) } else { Err(Error::Invalid(format!("unsafe page id {id:?}"))) }
 }
 
+/// Backgrounds are archive paths written into page.xml, so they must stay under `media/`.
+pub fn safe_media(name: &str) -> Result<&str, Error> {
+    let ok = name.starts_with("media/")
+        && name.len() > 6
+        && !name.contains("..")
+        && !name.contains('\\')
+        && !name.contains("//")
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '-' | '_' | '.'));
+    if ok { Ok(name) } else { Err(Error::Invalid(format!("unsafe media path {name:?}"))) }
+}
+
 pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
     let mut zw = ZipWriter::new(Cursor::new(Vec::new()));
     let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
@@ -121,8 +132,12 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
     let mut media_written = std::collections::HashSet::new();
     for p in &doc.pages {
         let id = safe_id(&p.id)?;
+        let bg = match &p.background {
+            Some(b) => format!(" background=\"{}\"", esc(safe_media(b)?)),
+            None => String::new(),
+        };
         let page_xml = format!(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<page id=\"{}\" width=\"{}\" height=\"{}\"><content/></page>\n",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<page id=\"{}\" width=\"{}\" height=\"{}\"{bg}><content/></page>\n",
             esc(id), p.width, p.height
         );
         zw.start_file(format!("pages/{id}/page.xml"), deflated)?;
@@ -210,22 +225,23 @@ fn page_ids_from_index(xml: &[u8]) -> Result<Vec<String>, Error> {
     Ok(ids)
 }
 
-fn page_dims(xml: &[u8]) -> Option<(f32, f32)> {
+fn page_attrs(xml: &[u8]) -> Option<(f32, f32, Option<String>)> {
     let mut reader = Reader::from_reader(xml);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if e.local_name().as_ref() == b"page" => {
-                let (mut w, mut h) = (None, None);
+                let (mut w, mut h, mut bg) = (None, None, None);
                 for a in e.attributes().flatten() {
-                    let v = String::from_utf8_lossy(&a.value).parse::<f32>().ok();
+                    let raw = a.unescape_value().ok()?.into_owned();
                     match a.key.as_ref() {
-                        b"width" => w = v,
-                        b"height" => h = v,
+                        b"width" => w = raw.parse::<f32>().ok(),
+                        b"height" => h = raw.parse::<f32>().ok(),
+                        b"background" => bg = Some(raw),
                         _ => {}
                     }
                 }
-                return w.zip(h);
+                return w.zip(h).map(|(w, h)| (w, h, bg));
             }
             Ok(Event::Eof) | Err(_) => return None,
             _ => {}
@@ -259,7 +275,11 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
     for id in &ids {
         safe_id(id)?;
         let (px, ink) = (format!("pages/{id}/page.xml"), format!("pages/{id}/ink.jink"));
-        let (w, h) = page_dims(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0));
+        let (w, h, background) =
+            page_attrs(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0, None));
+        if let Some(b) = &background {
+            safe_media(b)?;
+        }
         let InkFile { strokes, view } = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?;
         claimed.push(px);
         claimed.push(ink);
@@ -292,7 +312,7 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                 objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data }));
             }
         }
-        pages.push(Page { id: id.clone(), width: w, height: h, strokes, view, objects });
+        pages.push(Page { id: id.clone(), width: w, height: h, background, strokes, view, objects });
     }
 
     let mut opaque = Vec::new();

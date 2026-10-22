@@ -12,6 +12,10 @@ and APIs may change in any release.
   configurable graph paper. Graphs are vector page objects (`pages/<id>/objects.json`) that
   can be selected, moved, resized, duplicated, deleted and edited (ranges, step, grid/axes/numbers).
 - Select tool.
+- PDF import: each PDF page becomes a notebook page with the rendered page as a background
+  (`media/page-N.png` in the package, preserved on roundtrip). Rendering uses a vendored pdf.js.
+- PDF export: pages are composited (background + ink) and written as a PDF.
+- `Page.background` (optional, backwards compatible).
 
 ## [0.1.1] - 2026-10-22
 
