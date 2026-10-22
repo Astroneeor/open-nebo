@@ -26,7 +26,9 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::model::{Document, OpaqueEntry, Page, Stroke, View};
+use base64::Engine;
+
+use crate::model::{Document, ImageObject, OpaqueEntry, Page, PageObject, Stroke, View};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -46,6 +48,28 @@ struct InkFile {
     strokes: Vec<Stroke>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     view: Option<View>,
+}
+
+/// `pages/<id>/objects.json`: object list with image bytes replaced by a `media` member path.
+#[derive(Serialize, Deserialize)]
+struct ObjectsFile {
+    objects: Vec<ObjectMeta>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum ObjectMeta {
+    Image { id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String },
+}
+
+fn ext_for(mime: &str) -> Result<&'static str, Error> {
+    match mime {
+        "image/png" => Ok("png"),
+        "image/jpeg" => Ok("jpg"),
+        "image/gif" => Ok("gif"),
+        "image/webp" => Ok("webp"),
+        m => Err(Error::Invalid(format!("unsupported image type {m:?}"))),
+    }
 }
 
 fn esc(s: &str) -> String {
@@ -92,6 +116,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
     zw.start_file("style.css", deflated)?;
     zw.write_all(b"")?;
 
+    let mut media_written = std::collections::HashSet::new();
     for p in &doc.pages {
         let id = safe_id(&p.id)?;
         let page_xml = format!(
@@ -102,6 +127,30 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         zw.write_all(page_xml.as_bytes())?;
         zw.start_file(format!("pages/{id}/ink.jink"), deflated)?;
         zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone(), view: p.view })?)?;
+
+        if !p.objects.is_empty() {
+            let mut metas = Vec::new();
+            for o in &p.objects {
+                let PageObject::Image(im) = o;
+                let image_id = safe_id(&im.id)?;
+                let media = format!("media/{image_id}.{}", ext_for(&im.mime)?);
+                let bytes = base64::engine::general_purpose::STANDARD
+                    .decode(&im.data)
+                    .map_err(|e| Error::Invalid(format!("image {image_id}: {e}")))?;
+                if !media_written.insert(media.clone()) {
+                    return Err(Error::Invalid(format!("duplicate image id {image_id:?}")));
+                }
+                zw.start_file(&media, deflated)?;
+                zw.write_all(&bytes)?;
+                files.push(media.clone());
+                metas.push(ObjectMeta::Image {
+                    id: im.id.clone(), x: im.x, y: im.y, w: im.w, h: im.h, mime: im.mime.clone(), media,
+                });
+            }
+            zw.start_file(format!("pages/{id}/objects.json"), deflated)?;
+            zw.write_all(&serde_json::to_vec(&ObjectsFile { objects: metas })?)?;
+            files.push(format!("pages/{id}/objects.json"));
+        }
     }
 
     for o in &doc.opaque {
@@ -200,7 +249,23 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         let InkFile { strokes, view } = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?;
         claimed.push(px);
         claimed.push(ink);
-        pages.push(Page { id: id.clone(), width: w, height: h, strokes, view });
+
+        let mut objects = Vec::new();
+        let obj_path = format!("pages/{id}/objects.json");
+        if zip.file_names().any(|n| n == obj_path) {
+            let file: ObjectsFile = serde_json::from_slice(&read_entry(&mut zip, &obj_path)?)?;
+            claimed.push(obj_path);
+            for ObjectMeta::Image { id: image_id, x, y, w, h, mime, media } in file.objects {
+                let ext = ext_for(&mime)?;
+                if media != format!("media/{}.{ext}", safe_id(&image_id)?) {
+                    return Err(Error::Invalid(format!("image {image_id}: bad media path {media:?}")));
+                }
+                let data = base64::engine::general_purpose::STANDARD.encode(read_entry(&mut zip, &media)?);
+                claimed.push(media);
+                objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data }));
+            }
+        }
+        pages.push(Page { id: id.clone(), width: w, height: h, strokes, view, objects });
     }
 
     let mut opaque = Vec::new();

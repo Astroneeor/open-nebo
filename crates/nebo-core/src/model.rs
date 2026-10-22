@@ -54,11 +54,36 @@ pub struct Page {
     pub strokes: Vec<Stroke>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
+    /// Non-ink objects, drawn in order (later = on top), beneath the strokes.
+    /// x/y/w/h are in the same page coordinate space as stroke points.
+    #[serde(default)]
+    pub objects: Vec<PageObject>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum PageObject {
+    Image(ImageObject),
+}
+
+/// A pasted/dropped raster image. In memory (and over IPC) the bytes travel as
+/// base64 in `data`; in the package they live in `media/<id>.<ext>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ImageObject {
+    pub id: String,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    /// image/png, image/jpeg, image/gif or image/webp.
+    pub mime: String,
+    #[serde(default)]
+    pub data: String,
 }
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new(), view: None }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new(), view: None, objects: Vec::new() }
     }
 }
 
