@@ -206,9 +206,10 @@ const Graphs = (() => {
 
   function toggleMenu() {
     if (!menu.hidden) { closeMenu(); return; }
+    menu.hidden = false; insBtn.classList.add("on");
+    if (window.Chrome) { Chrome.placePopover(menu, insBtn); return; }
     const r = insBtn.getBoundingClientRect();
     menu.style.left = Math.max(8, r.left) + "px"; menu.style.top = r.bottom + 6 + "px";
-    menu.hidden = false; insBtn.classList.add("on");
   }
 
   document.addEventListener("pointerdown", (ev) => {

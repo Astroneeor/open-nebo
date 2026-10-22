@@ -7,6 +7,15 @@ folder synced by [Syncthing](https://syncthing.net), the same way an Obsidian va
 **Status: early.** Ink capture, pages, eraser, undo, autosave and the sync-safety
 layer work. See limitations below.
 
+<p>
+  <img src="docs/screenshots/library-light.png" alt="The library: folder tree, notebook cards with thumbnails" width="49%">
+  <img src="docs/screenshots/editor-dark.png" alt="The editor in the dark theme, with the floating tool palette" width="49%">
+</p>
+
+The interface follows light and dark system themes (with a manual toggle), uses a floating tool
+palette and icons throughout (icons are [Lucide](https://lucide.dev), ISC licence, in
+`ui/vendor/LUCIDE-LICENSE`).
+
 ## Layout
 
 - `crates/nebo-core` — package format + vault/sync-safety logic (tested, no GUI).

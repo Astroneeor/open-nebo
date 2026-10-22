@@ -30,9 +30,10 @@
       }
       document.body.append(menu);
     }
+    menu.hidden = false; $("pageMenu").setAttribute("aria-expanded", "true");
+    if (window.Chrome) { Chrome.placePopover(menu, $("pageMenu")); return; }
     const r = $("pageMenu").getBoundingClientRect();
     menu.style.left = Math.max(8, r.left) + "px"; menu.style.top = r.bottom + 6 + "px";
-    menu.hidden = false; $("pageMenu").setAttribute("aria-expanded", "true");
   }
 
   const btn = document.createElement("button");

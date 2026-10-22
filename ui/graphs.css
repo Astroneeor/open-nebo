@@ -1,16 +1,9 @@
-#insertMenu { position:fixed; z-index:20; width:290px; padding:6px; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.28); }
-#insertMenu .head { padding:4px 8px 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#888; }
-#insertMenu .item { display:flex; align-items:center; gap:10px; width:100%; margin:0; padding:6px 8px; border:none; border-radius:8px; background:none; text-align:left; }
-#insertMenu button.item:hover, #insertMenu .item.paper:hover { background:var(--bg); }
-#insertMenu canvas { flex:none; background:#fff; border:1px solid var(--line); border-radius:4px; }
-#insertMenu span { display:flex; flex-direction:column; gap:3px; flex:1; min-width:0; }
-#insertMenu small { color:#888; font-size:12px; }
-#insertMenu input { width:44px; padding:1px 4px; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:4px; }
-#stage { position:relative; }
-#graphPanel { position:fixed; right:20px; top:70px; z-index:10; width:168px; display:flex; flex-direction:column; gap:6px; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 3px 14px rgba(0,0,0,.22); }
-#graphPanel[hidden], #insertMenu[hidden] { display:none; }
-#graphPanel label { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; }
-#graphPanel label.flag { justify-content:flex-start; }
-#graphPanel input[type=number] { width:76px; padding:2px 4px; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:4px; }
-#graphPanel input.bad { border-color:#d33; }
-#graphPanel button.danger { color:#d33; }
+/* Graph parameters panel (shown when exactly one graph is selected). Surface, radius and shadow come from style.css. */
+#graphPanel { position: fixed; right: 18px; top: calc(var(--bar-h) + 16px); z-index: 10; width: 196px; display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+#graphPanel[hidden], #insertMenu[hidden] { display: none; }
+#graphPanel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--fg-2); }
+#graphPanel label.flag { justify-content: flex-start; color: var(--fg); }
+#graphPanel input[type="number"] { width: 80px; height: 28px; padding: 0 8px; font-size: 13px; color: var(--fg); }
+#graphPanel button { height: 32px; justify-content: center; background: var(--surface-2); }
+#graphPanel button.danger { color: var(--danger); }
+#graphPanel button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 14%, transparent); }

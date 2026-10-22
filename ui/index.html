@@ -3,39 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Open Nebo</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="graphs.css">
 <link rel="stylesheet" href="library.css">
+<script>/* apply the saved theme before first paint so there is no flash */
+try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
 </head>
 <body>
 <section id="library" aria-label="Library"></section>
 <main id="editor" hidden>
   <header id="bar">
-    <button id="backLib" title="Back to library">‹ Library</button>
-    <span class="sep"></span>
-    <input id="color" type="hidden" value="#000000">
-    <button id="colorBtn" class="colorbtn" type="button" title="Pen colour" aria-haspopup="dialog" aria-expanded="false"></button>
-    <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
-    <button id="pen" class="on">Pen</button>
-    <button id="eraser">Eraser</button>
-    <button id="smart" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)">Shapes</button>
-    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
-    <button id="redo" title="Redo (Ctrl+Shift+Z / Ctrl+Y)">Redo</button>
-    <span class="sep"></span>
-    <button id="prev">‹</button><span id="pageNo">–</span><button id="next">›</button>
-    <button id="addPage">+ Page</button>
-    <span class="sep"></span>
-    <button id="zoomOut" title="Zoom out">−</button><span id="zoomPct" class="muted">100%</span><button id="zoomIn" title="Zoom in">+</button>
-    <button id="resetView" title="Reset view">Reset view</button>
-    <span class="sep"></span>
-    <button id="importPdf" title="Import a PDF into this notebook">Import PDF</button>
-    <button id="exportPdf" title="Export this notebook as a PDF">Export PDF</button>
-    <span id="status" class="muted"></span>
+    <div class="grp">
+      <button id="backLib" data-icon="back" title="Back to library" type="button"></button>
+    </div>
+    <div class="grp" id="pageGrp">
+      <button id="prev" data-icon="chevron-left" title="Previous page" type="button"></button>
+      <span id="pageNo" title="Current page">–</span>
+      <button id="next" data-icon="chevron-right" title="Next page" type="button"></button>
+      <button id="addPage" data-icon="add-page" title="Add a blank page" type="button"></button>
+    </div>
+    <span class="grow"></span>
+    <span id="status" class="muted" role="status"></span>
+    <div class="grp">
+      <button id="undo" data-icon="undo" title="Undo (Ctrl+Z)" type="button"></button>
+      <button id="redo" data-icon="redo" title="Redo (Ctrl+Shift+Z / Ctrl+Y)" type="button"></button>
+    </div>
+    <div class="grp">
+      <button id="zoomOut" data-icon="zoom-out" title="Zoom out" type="button"></button>
+      <span id="zoomPct" title="Zoom">100%</span>
+      <button id="zoomIn" data-icon="zoom-in" title="Zoom in" type="button"></button>
+      <button id="resetView" data-icon="reset-view" title="Reset view" type="button"></button>
+    </div>
+    <div class="grp">
+      <button id="importPdf" data-icon="import-pdf" title="Import a PDF into this notebook" type="button"></button>
+      <button id="exportPdf" data-icon="export-pdf" title="Export this notebook as a PDF" type="button"></button>
+    </div>
   </header>
   <div id="banner" hidden></div>
   <div id="stage"><canvas id="cv"></canvas></div>
+
+  <aside id="palette" class="palette" aria-label="Tools">
+    <button id="pen" class="on" data-icon="pen" title="Pen" type="button"></button>
+    <button id="eraser" data-icon="eraser" title="Eraser" type="button"></button>
+    <button id="smart" data-icon="shapes" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)" type="button"></button>
+    <span class="rule" role="separator"></span>
+    <input id="color" type="hidden" value="#000000">
+    <button id="colorBtn" class="colorbtn" type="button" title="Pen colour" aria-haspopup="dialog" aria-expanded="false"></button>
+    <button id="widthBtn" type="button" title="Pen size" aria-haspopup="dialog" aria-expanded="false"><span class="wdot"></span></button>
+    <span class="rule" role="separator"></span>
+    <button id="paletteToggle" data-icon="panel-left" title="Hide tools" type="button" aria-expanded="true"></button>
+  </aside>
+  <div id="widthPop" class="pop" hidden role="dialog" aria-label="Pen size">
+    <div class="wprev"><span class="wdot big"></span></div>
+    <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
+    <output id="widthVal">2</output>
+  </div>
 </main>
+<script src="icons.js"></script>
 <script src="history.js"></script>
 <script src="view.js"></script>
 <script src="pagerange.js"></script>
@@ -50,6 +77,7 @@
 <script src="pages.js"></script>
 <script src="bgpicker.js"></script>
 <script src="library.js"></script>
+<script src="chrome.js"></script>
 <script type="module" src="pdf.js"></script>
 </body>
 </html>
