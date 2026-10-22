@@ -18,7 +18,8 @@
 </aside>
 <main>
   <header id="bar">
-    <input id="color" type="color" value="#000000" title="Pen color">
+    <input id="color" type="hidden" value="#000000">
+    <button id="colorBtn" class="colorbtn" type="button" title="Pen colour" aria-haspopup="dialog" aria-expanded="false"></button>
     <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
     <button id="pen" class="on">Pen</button>
     <button id="eraser">Eraser</button>
@@ -38,6 +39,7 @@
 <script src="view.js"></script>
 <script src="shapes.js"></script>
 <script src="images.js"></script>
+<script src="colorpicker.js"></script>
 <script src="app.js"></script>
 <script src="graphs.js"></script>
 </body>

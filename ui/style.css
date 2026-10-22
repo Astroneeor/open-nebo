@@ -20,3 +20,20 @@ main { flex:1; display:flex; flex-direction:column; min-width:0; }
 canvas { position:absolute; inset:0; width:100%; height:100%; background:#fff; touch-action:none; cursor:crosshair; }
 canvas.pannable { cursor:grab; } canvas.panning { cursor:grabbing; }
 #newForm input { width:100%; margin-top:8px; padding:4px 8px; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+.colorbtn { width:30px; height:26px; padding:0; position:relative; --c:#000; overflow:hidden; background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/8px 8px; }
+.colorbtn::after { content:""; position:absolute; inset:0; background:var(--c); }
+.cp-pop { position:fixed; z-index:20; width:228px; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.28); display:flex; flex-direction:column; gap:8px; max-height:calc(100vh - 16px); overflow:auto; }
+.cp-pop[hidden] { display:none; }
+.cp-wheel { width:180px; height:180px; align-self:center; touch-action:none; cursor:crosshair; background:none; position:static; border-radius:50%; }
+.cp-row { display:flex; align-items:center; gap:8px; font-size:12px; }
+.cp-row > span:first-child:not(.cp-preview) { width:70px; flex:none; }
+.cp-slider { flex:1; min-width:0; height:12px; border-radius:6px; -webkit-appearance:none; appearance:none; border:1px solid var(--line); }
+.cp-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid #333; }
+.cp-slider::-moz-range-thumb { width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid #333; }
+.cp-preview { width:28px; height:28px; border-radius:6px; border:1px solid var(--line); flex:none; }
+.cp-hex { flex:1; min-width:0; padding:4px 6px; font:inherit; font-family:ui-monospace,monospace; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+.cp-hex.bad { border-color:#e03131; }
+.cp-h { font-size:11px; color:#888; margin-top:2px; }
+.cp-chips { display:flex; flex-wrap:wrap; gap:5px; min-height:4px; }
+.chip { width:22px; height:22px; padding:0; border-radius:50%; position:relative; overflow:hidden; --c:#000; background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/8px 8px; }
+.chip::after { content:""; position:absolute; inset:0; background:var(--c); }

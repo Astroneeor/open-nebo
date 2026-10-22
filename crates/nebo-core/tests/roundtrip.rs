@@ -18,6 +18,18 @@ fn roundtrip_preserves_content() {
 }
 
 #[test]
+fn stroke_colour_with_alpha_roundtrips() {
+    let mut d = sample();
+    let mut s = d.pages[0].strokes[0].clone();
+    s.id = "s2".into();
+    s.color = "#12345680".into();
+    d.pages[0].strokes.push(s);
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert_eq!(back.pages[0].strokes[1].color, "#12345680");
+    assert_eq!(back, d);
+}
+
+#[test]
 fn infinite_canvas_coords_and_view_roundtrip() {
     let mut d = sample();
     d.pages[0].strokes[0].points[0] = Point { x: -5000.5, y: 90000.0, t: 0, p: 0.5 };
