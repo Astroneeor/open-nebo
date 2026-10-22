@@ -24,6 +24,17 @@ and APIs may change in any release.
   A tap selects a graph; a drag that starts on an unselected graph is a lasso, so you can still select ink
   written on it. The graph parameter panel follows the selection.
 
+- Canvas backgrounds: plain, paper (lined), grid and dot patterns over any base colour, with presets for each
+  in light and dark. The line/dot ink is derived from the base colour (a darker tint on light bases, a lighter
+  one on dark bases). Set per notebook (`Document.style`, `meta.json`) with an optional per-page override
+  (`Page.style`, `pattern`/`bgcolor` attributes in `page.xml`). Drawn in world space so it tiles across the
+  infinite canvas and thins out when zoomed far out. A Background popover (presets, pattern, swatches, custom
+  colour, "Apply to all pages") and PDF export both use it.
+
+### Changed
+- The page `template` field (lined/grid/dotted) is replaced by the background style. Old files with a
+  `template` attribute still open and are mapped to `paper`/`grid`/`dot` on white; they are saved in the new form.
+
 ### Fixed
 - Strokes did not render after the PDF merge: `strokes.forEach(drawStroke)` passed the index as
   `drawStroke`'s new canvas-context parameter.
