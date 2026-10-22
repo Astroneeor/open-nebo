@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use nebo_core::model::OpaqueEntry;
 use nebo_core::pdf::PdfPage;
-use nebo_core::{package, vault, Document};
+use nebo_core::{library, package, vault, Document};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -21,6 +21,8 @@ struct AppState {
     import_path: Mutex<Option<PathBuf>>,
     /// Page images collected for a PDF export (see `export_pdf_*`).
     export_pages: Mutex<Vec<PdfPage>>,
+    /// The notebook folder chosen in the UI; every library command is confined to it.
+    root: Mutex<Option<PathBuf>>,
 }
 
 #[derive(Serialize)]
@@ -208,6 +210,97 @@ fn export_pdf_finish(path: String, state: State<AppState>) -> Res<()> {
     vault::write_atomic(&p, &bytes).map_err(err)
 }
 
+// ---------- library (home screen) ----------
+
+fn root_of(state: &State<AppState>) -> Res<PathBuf> {
+    state.root.lock().unwrap().clone().ok_or_else(|| "no notebook folder selected".to_string())
+}
+
+/// Forget in-memory state for a path that was renamed, moved or trashed.
+fn forget(state: &State<AppState>, path: &str) {
+    state.opaque.lock().unwrap().remove(&PathBuf::from(path));
+}
+
+fn path_str(p: PathBuf) -> String {
+    p.display().to_string()
+}
+
+#[tauri::command]
+fn library_tree(state: State<AppState>) -> Res<library::FolderNode> {
+    library::folder_tree(&root_of(&state)?).map_err(err)
+}
+
+#[tauri::command]
+fn library_list(dir: String, state: State<AppState>) -> Res<library::Listing> {
+    library::list_dir(&root_of(&state)?, Path::new(&dir)).map_err(err)
+}
+
+#[tauri::command]
+fn library_new_folder(parent: String, name: String, state: State<AppState>) -> Res<String> {
+    library::create_folder(&root_of(&state)?, Path::new(&parent), &name).map(path_str).map_err(err)
+}
+
+/// Creates an empty notebook (or, with `canvas`, a single infinite board). Returns its path.
+#[tauri::command]
+fn library_new_notebook(dir: String, title: String, canvas: bool, state: State<AppState>) -> Res<String> {
+    library::create_notebook(&root_of(&state)?, Path::new(&dir), &title, canvas).map(path_str).map_err(err)
+}
+
+#[tauri::command]
+fn library_rename(path: String, name: String, state: State<AppState>) -> Res<String> {
+    let new = library::rename(&root_of(&state)?, Path::new(&path), &name).map_err(err)?;
+    forget(&state, &path);
+    Ok(path_str(new))
+}
+
+#[tauri::command]
+fn library_move(path: String, dest: String, state: State<AppState>) -> Res<String> {
+    let new = library::move_to(&root_of(&state)?, Path::new(&path), Path::new(&dest)).map_err(err)?;
+    forget(&state, &path);
+    Ok(path_str(new))
+}
+
+#[tauri::command]
+fn library_duplicate(path: String, state: State<AppState>) -> Res<String> {
+    library::duplicate(&root_of(&state)?, Path::new(&path)).map(path_str).map_err(err)
+}
+
+/// Moves to `<folder>/.trash`; nothing is deleted.
+#[tauri::command]
+fn library_trash(path: String, state: State<AppState>) -> Res<String> {
+    let new = library::trash(&root_of(&state)?, Path::new(&path)).map_err(err)?;
+    forget(&state, &path);
+    Ok(path_str(new))
+}
+
+#[derive(Serialize)]
+struct Preview {
+    /// Only the first page is sent; the card thumbnail is drawn from it.
+    doc: Document,
+    pages: usize,
+}
+
+/// Loads a notebook for its card thumbnail without registering it as open.
+#[tauri::command]
+fn preview_doc(path: String, state: State<AppState>) -> Res<Preview> {
+    let p = library::resolve(&root_of(&state)?, Path::new(&path)).map_err(err)?;
+    let (mut doc, _) = vault::load(&p).map_err(err)?;
+    let pages = doc.pages.len();
+    doc.pages.truncate(1);
+    doc.opaque.clear();
+    Ok(Preview { doc, pages })
+}
+
+/// Raw bytes of one media member (e.g. the page-1 PDF background) for a thumbnail.
+#[tauri::command]
+fn preview_media(path: String, name: String, state: State<AppState>) -> Res<Response> {
+    package::safe_media(&name).map_err(err)?;
+    let p = library::resolve(&root_of(&state)?, Path::new(&path)).map_err(err)?;
+    let (doc, _) = vault::load(&p).map_err(err)?;
+    let e = doc.opaque.into_iter().find(|e| e.name == name).ok_or("media not found")?;
+    Ok(Response::new(e.data))
+}
+
 #[tauri::command]
 fn write_stignore(dir: String) -> Res<()> {
     let p = Path::new(&dir).join(".stignore");
@@ -236,6 +329,7 @@ fn watch_vault(dir: String, app: tauri::AppHandle, state: State<AppState>) -> Re
     .map_err(err)?;
     w.watch(Path::new(&dir), RecursiveMode::Recursive).map_err(err)?;
     *state.watcher.lock().unwrap() = Some(w);
+    *state.root.lock().unwrap() = Some(PathBuf::from(&dir));
     Ok(())
 }
 
@@ -245,7 +339,9 @@ fn main() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             default_vault, list_vault, open_doc, save_doc, new_doc, write_stignore, watch_vault,
-            read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish
+            read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish,
+            library_tree, library_list, library_new_folder, library_new_notebook, library_rename, library_move,
+            library_duplicate, library_trash, preview_doc, preview_media
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Nebo");

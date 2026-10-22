@@ -1,9 +1,10 @@
+pub mod library;
 pub mod model;
 pub mod package;
 pub mod pdf;
 pub mod vault;
 
-pub use model::{BackgroundStyle, Document, GraphObject, ImageObject, Page, PageObject, Point, Shape, ShapeKind, Stroke, View};
+pub use model::{BackgroundStyle, DocKind, Document, GraphObject, ImageObject, Page, PageObject, Point, Shape, ShapeKind, Stroke, View};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -1,0 +1,103 @@
+/* Home screen. Plain structure on CSS variables so a later pass can restyle it (and add icons via the
+   data-icon attributes) without touching library.js. Inherits --bg --fg --panel --line --acc from style.css. */
+:root {
+  --lib-radius: 12px;
+  --lib-gap: 16px;
+  --lib-card-w: 200px;
+  --lib-side-w: 240px;
+  --lib-muted: #888;
+  --lib-warn: #ffb020;
+  --lib-danger: #e03131;
+  --lib-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 4px 14px rgba(0, 0, 0, .08);
+}
+[hidden] { display: none !important; }
+
+#library { flex: 1; display: flex; min-width: 0; height: 100vh; }
+
+/* ---- sidebar: folder tree ---- */
+.lib-side { width: var(--lib-side-w); flex: none; display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); }
+.lib-brand { padding: 18px 16px 10px; font-weight: 650; font-size: 15px; letter-spacing: .2px; }
+.lib-tree { flex: 1; overflow: auto; padding: 4px 8px; }
+.lib-tree-row { display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px calc(8px + var(--depth, 0) * 14px); border-radius: 8px; cursor: pointer; user-select: none; }
+.lib-tree-row:hover { background: var(--bg); }
+.lib-tree-row.sel { background: var(--acc); color: #fff; }
+.lib-tree-row.drop, .lib-card.drop, .lib-crumb.drop { outline: 2px dashed var(--acc); outline-offset: -2px; background: color-mix(in srgb, var(--acc) 14%, transparent); }
+.lib-twirl { width: 16px; height: 16px; flex: none; padding: 0; border: none; background: none; color: inherit; font-size: 11px; line-height: 1; cursor: pointer; }
+.lib-twirl.spacer { visibility: hidden; }
+.lib-tree-icon { flex: none; width: 14px; height: 14px; border-radius: 3px; background: currentColor; opacity: .35; }
+.lib-tree-icon[data-icon="library"] { border-radius: 50%; }
+.lib-tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-side-foot { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
+.lib-vault { word-break: break-all; margin-bottom: 4px; }
+.lib-link { display: block; border: none; background: none; padding: 2px 0; color: var(--acc); font: inherit; cursor: pointer; }
+
+/* ---- main: bar + body ---- */
+.lib-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lib-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.lib-crumbs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 220px; overflow: hidden; }
+.lib-crumb { border: none; background: none; padding: 4px 8px; border-radius: 6px; font: inherit; font-size: 15px; color: var(--lib-muted); cursor: pointer; white-space: nowrap; }
+.lib-crumb:hover { background: var(--bg); color: var(--fg); }
+.lib-crumb.current { color: var(--fg); font-weight: 600; cursor: default; }
+.lib-crumb-sep { color: var(--lib-muted); }
+.lib-search { flex: 0 1 220px; padding: 7px 12px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; }
+.lib-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lib-btn { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.lib-btn:hover { background: var(--bg); }
+.lib-btn.primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+.lib-btn.primary:hover { filter: brightness(1.08); }
+.lib-btn.primary.danger { background: var(--lib-danger); border-color: var(--lib-danger); }
+.lib-banner { padding: 8px 24px; background: var(--lib-warn); color: #222; }
+.lib-body { flex: 1; overflow: auto; padding: 8px 24px 40px; }
+.lib-section { margin-top: 22px; }
+.lib-section h2 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--lib-muted); }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--lib-card-w), 1fr)); gap: var(--lib-gap); }
+
+/* Recent is one horizontally scrolling row, not a wrapping grid. */
+.lib-recent { display: flex; overflow-x: auto; padding: 2px 2px 10px; }
+.lib-recent .lib-card { flex: 0 0 var(--lib-card-w); }
+
+/* ---- cards ---- */
+.lib-card { position: relative; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--lib-radius); overflow: hidden; cursor: pointer; box-shadow: var(--lib-shadow); transition: transform .12s ease, border-color .12s ease; }
+.lib-card:hover, .lib-card:focus-visible { transform: translateY(-2px); border-color: var(--acc); outline: none; }
+.lib-card.dragging { opacity: .45; }
+.lib-card.conflict { border-color: var(--lib-warn); }
+.lib-thumb { position: relative; aspect-ratio: 4 / 3; background: #fff; border-bottom: 1px solid var(--line); overflow: hidden; }
+.lib-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.lib-thumb-ph { position: absolute; inset: 0; background: linear-gradient(110deg, #f1f1f4 30%, #fafafc 50%, #f1f1f4 70%); background-size: 200% 100%; animation: lib-shimmer 1.4s linear infinite; }
+.lib-thumb.broken { background: repeating-linear-gradient(45deg, #f1f1f4 0 8px, #fafafc 8px 16px); }
+@keyframes lib-shimmer { to { background-position: -200% 0; } }
+@media (prefers-color-scheme: dark) {
+  .lib-thumb-ph { background: linear-gradient(110deg, #2a2a30 30%, #34343c 50%, #2a2a30 70%); background-size: 200% 100%; }
+}
+.lib-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: rgba(0, 0, 0, .62); color: #fff; }
+.lib-badge.warn { background: var(--lib-warn); color: #222; }
+.lib-meta { padding: 10px 40px 10px 12px; min-width: 0; }
+.lib-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-sub, .lib-path { margin-top: 2px; font-size: 12px; color: var(--lib-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-more { position: absolute; right: 6px; bottom: 8px; width: 28px; height: 28px; padding: 0; border: none; border-radius: 8px; background: none; color: var(--lib-muted); font-size: 18px; line-height: 1; cursor: pointer; opacity: 0; }
+.lib-card:hover .lib-more, .lib-card:focus-within .lib-more { opacity: 1; }
+.lib-more:hover { background: var(--bg); color: var(--fg); }
+.lib-folder .lib-thumb { display: grid; place-items: center; background: var(--bg); }
+.lib-folder-glyph { width: 84px; height: 62px; border-radius: 6px 10px 10px 10px; background: var(--acc); opacity: .85; position: relative; }
+.lib-folder-glyph::before { content: ""; position: absolute; left: 0; top: -9px; width: 34px; height: 12px; border-radius: 6px 6px 0 0; background: inherit; }
+
+.lib-empty { max-width: 420px; margin: 12vh auto 0; text-align: center; color: var(--lib-muted); }
+.lib-empty p { margin: 6px 0; }
+.lib-hint { font-size: 13px; }
+
+/* ---- menu + dialogs ---- */
+.lib-menu { position: fixed; z-index: 40; min-width: 170px; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, .28); }
+.lib-menu-item { border: none; background: none; text-align: left; padding: 7px 12px; border-radius: 6px; font: inherit; color: inherit; cursor: pointer; }
+.lib-menu-item:hover, .lib-menu-item:focus-visible { background: var(--bg); outline: none; }
+.lib-menu-item.danger { color: var(--lib-danger); }
+.lib-dialog-back { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .4); display: flex; align-items: center; justify-content: center; }
+.lib-dialog { width: min(400px, 92vw); padding: 18px; display: flex; flex-direction: column; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
+.lib-dialog h3 { margin: 0; font-size: 15px; }
+.lib-dialog-msg { margin: 0; font-size: 13px; color: var(--lib-muted); }
+.lib-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--lib-muted); }
+.lib-field input, .lib-field select { padding: 7px 10px; font: inherit; font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.lib-dialog-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ---- editor additions ---- */
+#editor.is-canvas #prev, #editor.is-canvas #next, #editor.is-canvas #pageNo,
+#editor.is-canvas #addPage, #editor.is-canvas #pageMenu { display: none; }

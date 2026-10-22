@@ -188,6 +188,14 @@ pub struct OpaqueEntry {
     pub data: Vec<u8>,
 }
 
+/// What a document is: a paged notebook (the default, stored as no `kind`) or a
+/// single infinite board.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DocKind {
+    Canvas,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Document {
     pub title: String,
@@ -195,12 +203,20 @@ pub struct Document {
     /// Notebook default background; pages without their own `style` use it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<BackgroundStyle>,
+    /// `None` for a normal paged notebook. Absent in older files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<DocKind>,
     #[serde(skip)]
     pub opaque: Vec<OpaqueEntry>,
 }
 
 impl Document {
     pub fn new(title: impl Into<String>) -> Self {
-        Self { title: title.into(), pages: vec![Page::new("page-1")], style: None, opaque: Vec::new() }
+        Self { title: title.into(), pages: vec![Page::new("page-1")], style: None, kind: None, opaque: Vec::new() }
+    }
+
+    /// A single infinite board: one page, no page navigation in the UI.
+    pub fn new_canvas(title: impl Into<String>) -> Self {
+        Self { kind: Some(DocKind::Canvas), ..Self::new(title) }
     }
 }
