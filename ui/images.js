@@ -66,6 +66,7 @@ const Images = (() => {
     const e = log[log.length - 1];
     if (!e) return false;
     if (e.k === "stroke") { log.pop(); return false; }
+    if (e.undo) { log.pop(); e.undo(); touch(); render(); return true; } // generic op pushed by selection.js
     log.pop();
     const pg = pageById(e.pageId);
     if (!pg) return true;
@@ -224,5 +225,8 @@ const Images = (() => {
   });
 
   function logAdd(pageId, obj) { resetLogIfNewDoc(); push({ k: "add", pageId, obj }); }
-  return { draw, overlay, undo, logStroke, logAdd };
+  // selection.js owns the Select tool; it adopts an image selected here (paste/drop) via takeSelection().
+  const takeSelection = () => { const id = selected() ? sel.id : null; sel.id = null; return id; };
+
+  return { draw, overlay, undo, logStroke, logAdd, push, takeSelection };
 })();

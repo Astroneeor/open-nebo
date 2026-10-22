@@ -72,6 +72,7 @@ function render() {
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
   Images.overlay(ctx, page());
+  Selection.overlay(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.drawOverlay(ctx);
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
