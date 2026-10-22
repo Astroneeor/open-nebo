@@ -1,16 +1,17 @@
 "use strict";
-// "+ Page" stays a plain blank page; the arrow next to it opens a small menu of ruled templates.
+// "+ Page" adds a page in the notebook's current look; the arrow next to it offers a plain, paper, grid or dot page.
 (() => {
   const A = window.__app, $ = (id) => document.getElementById(id);
-  const ITEMS = [["Blank", null], ["Lined", "lined"], ["Grid", "grid"], ["Dotted", "dotted"]];
+  const ITEMS = [["Plain", "plain"], ["Paper", "paper"], ["Grid", "grid"], ["Dot", "dot"]];
   let menu = null;
 
-  function addPage(template) {
+  function addPage(pattern) {
     const { S } = A;
     if (!S.doc) return;
     const base = A.page();
     const pg = { id: `page-${A.uid()}`, width: base.width, height: base.height, strokes: [], objects: [] };
-    if (template) pg.template = template;
+    // keep the colour of the page you are on, change only the pattern
+    if (pattern) pg.style = { pattern, color: Backgrounds.resolve(S.doc, base).color };
     S.doc.pages.push(pg);
     S.page = S.doc.pages.length - 1; A.touch(); A.render();
   }
@@ -35,7 +36,7 @@
   }
 
   const btn = document.createElement("button");
-  btn.id = "pageMenu"; btn.type = "button"; btn.textContent = "▾"; btn.title = "Add a blank, lined, grid or dotted page";
+  btn.id = "pageMenu"; btn.type = "button"; btn.textContent = "▾"; btn.title = "Add a plain, paper, grid or dot page";
   btn.setAttribute("aria-haspopup", "menu"); btn.setAttribute("aria-expanded", "false");
   btn.onclick = (ev) => { ev.stopPropagation(); if (menu && !menu.hidden) close(); else open(); };
   $("addPage").after(btn);

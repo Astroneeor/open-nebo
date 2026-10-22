@@ -29,7 +29,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use base64::Engine;
 
-use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
+use crate::model::{BackgroundStyle, Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
 use crate::Error;
 
 /// MIME type written into every new package.
@@ -45,6 +45,8 @@ struct Meta {
     format_version: String,
     title: String,
     generator: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    style: Option<BackgroundStyle>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,8 +96,19 @@ fn safe_id(id: &str) -> Result<&str, Error> {
 }
 
 /// Backgrounds are archive paths written into page.xml, so they must stay under `media/`.
-pub fn safe_template(t: &str) -> Result<&str, Error> {
-    if crate::model::TEMPLATES.contains(&t) { Ok(t) } else { Err(Error::Invalid(format!("unknown page template {t:?}"))) }
+pub fn safe_style(s: &BackgroundStyle) -> Result<&BackgroundStyle, Error> {
+    if s.is_valid() { Ok(s) } else { Err(Error::Invalid(format!("bad background style {s:?}"))) }
+}
+
+/// Page templates written by 0.1.1-era builds (`template="lined"` etc) mapped onto the style model.
+fn legacy_template(t: &str) -> Result<BackgroundStyle, Error> {
+    let pattern = match t {
+        "lined" => "paper",
+        "grid" => "grid",
+        "dotted" => "dot",
+        _ => return Err(Error::Invalid(format!("unknown page template {t:?}"))),
+    };
+    Ok(BackgroundStyle { pattern: pattern.into(), color: "#ffffff".into() })
 }
 
 fn safe_source(s: &Option<String>) -> Result<(), Error> {
@@ -127,6 +140,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         format_version: FORMAT_VERSION.into(),
         title: doc.title.clone(),
         generator: "open-nebo".into(),
+        style: doc.style.as_ref().map(safe_style).transpose()?.cloned(),
     };
     zw.start_file("meta.json", deflated)?;
     zw.write_all(&serde_json::to_vec_pretty(&meta)?)?;
@@ -155,8 +169,11 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
             Some(b) => format!(" background=\"{}\"", esc(safe_media(b)?)),
             None => String::new(),
         };
-        let tpl = match &p.template {
-            Some(t) => format!(" template=\"{}\"", esc(safe_template(t)?)),
+        let tpl = match &p.style {
+            Some(s) => {
+                let s = safe_style(s)?;
+                format!(" pattern=\"{}\" bgcolor=\"{}\"", s.pattern, s.color)
+            }
             None => String::new(),
         };
         let page_xml = format!(
@@ -250,28 +267,40 @@ fn page_ids_from_index(xml: &[u8]) -> Result<Vec<String>, Error> {
     Ok(ids)
 }
 
-type PageAttrs = (f32, f32, Option<String>, Option<String>);
+struct PageAttrs {
+    w: f32,
+    h: f32,
+    background: Option<String>,
+    style: Option<BackgroundStyle>,
+}
 
-fn page_attrs(xml: &[u8]) -> Option<PageAttrs> {
+fn page_attrs(xml: &[u8]) -> Result<Option<PageAttrs>, Error> {
     let mut reader = Reader::from_reader(xml);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if e.local_name().as_ref() == b"page" => {
-                let (mut w, mut h, mut bg, mut tpl) = (None, None, None, None);
+                let (mut w, mut h, mut bg, mut tpl, mut pat, mut col) = (None, None, None, None, None, None);
                 for a in e.attributes().flatten() {
-                    let raw = a.unescape_value().ok()?.into_owned();
+                    let Ok(raw) = a.unescape_value().map(|c| c.into_owned()) else { return Ok(None) };
                     match a.key.as_ref() {
                         b"width" => w = raw.parse::<f32>().ok(),
                         b"height" => h = raw.parse::<f32>().ok(),
                         b"background" => bg = Some(raw),
                         b"template" => tpl = Some(raw),
+                        b"pattern" => pat = Some(raw),
+                        b"bgcolor" => col = Some(raw),
                         _ => {}
                     }
                 }
-                return w.zip(h).map(|(w, h)| (w, h, bg, tpl));
+                let style = match (pat, col, tpl) {
+                    (Some(pattern), Some(color), _) => Some(safe_style(&BackgroundStyle { pattern, color })?.clone()),
+                    (_, _, Some(t)) => Some(legacy_template(&t)?),
+                    _ => None,
+                };
+                return Ok(w.zip(h).map(|(w, h)| PageAttrs { w, h, background: bg, style }));
             }
-            Ok(Event::Eof) | Err(_) => return None,
+            Ok(Event::Eof) | Err(_) => return Ok(None),
             _ => {}
         }
         buf.clear();
@@ -303,11 +332,8 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
     for id in &ids {
         safe_id(id)?;
         let (px, ink) = (format!("pages/{id}/page.xml"), format!("pages/{id}/ink.jink"));
-        let (w, h, background, template) =
-            page_attrs(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0, None, None));
-        if let Some(t) = &template {
-            safe_template(t)?;
-        }
+        let PageAttrs { w, h, background, style } = page_attrs(&read_entry(&mut zip, &px)?)?
+            .unwrap_or(PageAttrs { w: 1404.0, h: 1872.0, background: None, style: None });
         if let Some(b) = &background {
             safe_media(b)?;
         }
@@ -344,7 +370,7 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                 objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data, source }));
             }
         }
-        pages.push(Page { id: id.clone(), width: w, height: h, background, template, strokes, view, objects });
+        pages.push(Page { id: id.clone(), width: w, height: h, background, style, strokes, view, objects });
     }
 
     let mut opaque = Vec::new();
@@ -359,5 +385,8 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         opaque.push(OpaqueEntry { name, data });
     }
 
-    Ok(Document { title: meta.title, pages, opaque })
+    if let Some(s) = &meta.style {
+        safe_style(s)?;
+    }
+    Ok(Document { title: meta.title, pages, style: meta.style, opaque })
 }

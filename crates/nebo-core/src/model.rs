@@ -54,9 +54,9 @@ pub struct Page {
     /// Archive member under `media/` drawn behind the ink (e.g. an imported PDF page).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<String>,
-    /// Built-in ruled background drawn under the ink: `lined`, `grid` or `dotted`.
+    /// Per-page override of the notebook's canvas background style.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub template: Option<String>,
+    pub style: Option<BackgroundStyle>,
     pub strokes: Vec<Stroke>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
@@ -151,12 +151,32 @@ pub struct ImageObject {
     pub source: Option<String>,
 }
 
-/// Values accepted for `Page::template`.
-pub const TEMPLATES: [&str; 3] = ["lined", "grid", "dotted"];
+/// Patterns accepted for `BackgroundStyle::pattern`.
+pub const PATTERNS: [&str; 4] = ["plain", "paper", "grid", "dot"];
+
+/// Canvas background: a pattern drawn over a base colour. The line/dot ink is derived from the
+/// base colour by the UI, so only these two values are stored.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BackgroundStyle {
+    /// One of [`PATTERNS`].
+    pub pattern: String,
+    /// Base colour as `#rrggbb`.
+    pub color: String,
+}
+
+impl BackgroundStyle {
+    pub fn is_valid(&self) -> bool {
+        let c = self.color.as_bytes();
+        PATTERNS.contains(&self.pattern.as_str())
+            && c.len() == 7
+            && c[0] == b'#'
+            && c[1..].iter().all(u8::is_ascii_hexdigit)
+    }
+}
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, template: None, strokes: Vec::new(), view: None, objects: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, style: None, strokes: Vec::new(), view: None, objects: Vec::new() }
     }
 }
 
@@ -172,12 +192,15 @@ pub struct OpaqueEntry {
 pub struct Document {
     pub title: String,
     pub pages: Vec<Page>,
+    /// Notebook default background; pages without their own `style` use it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<BackgroundStyle>,
     #[serde(skip)]
     pub opaque: Vec<OpaqueEntry>,
 }
 
 impl Document {
     pub fn new(title: impl Into<String>) -> Self {
-        Self { title: title.into(), pages: vec![Page::new("page-1")], opaque: Vec::new() }
+        Self { title: title.into(), pages: vec![Page::new("page-1")], style: None, opaque: Vec::new() }
     }
 }

@@ -25,7 +25,9 @@ function mediaUrl(path, name) {
 // Background images are drawn in world coordinates (inside the viewport transform), so they pan/zoom with the ink.
 const bgImgs = new Map(); // "path|media/x.png" -> HTMLImageElement (once loaded)
 A.hooks.bg = (c, pg) => {
-  Templates.draw(c, pg);
+  const cvEl = $$("cv"), style = Backgrounds.resolve(A.S.doc, pg);
+  cvEl.style.background = style.color; // behind the canvas, so a resize never flashes white
+  Backgrounds.draw(c, style, { x0: V.x, y0: V.y, x1: V.x + cvEl.clientWidth / V.zoom, y1: V.y + cvEl.clientHeight / V.zoom }, V.zoom);
   if (!pg.background) return;
   const key = `${A.S.path}|${pg.background}`;
   const img = bgImgs.get(key);
@@ -207,7 +209,7 @@ function exportBounds(pg) {
   return { x0: Math.floor(x0), y0: Math.floor(y0), w: Math.ceil(x1 - Math.floor(x0)), h: Math.ceil(y1 - Math.floor(y0)) };
 }
 
-// Composite one page the way the screen does: template, PDF background, images, graphs, ink, shapes.
+// Composite one page the way the screen does: background style, PDF background, images, graphs, ink, shapes.
 async function paintPage(pg, canvas) {
   const { S } = A;
   const b = exportBounds(pg);
@@ -215,9 +217,8 @@ async function paintPage(pg, canvas) {
   canvas.width = Math.max(1, Math.round(b.w * k)); canvas.height = Math.max(1, Math.round(b.h * k));
   const c = canvas.getContext("2d");
   c.setTransform(1, 0, 0, 1, 0, 0);
-  c.fillStyle = "#fff"; c.fillRect(0, 0, canvas.width, canvas.height);
   c.setTransform(k, 0, 0, k, -b.x0 * k, -b.y0 * k);
-  Templates.draw(c, pg);
+  Backgrounds.draw(c, Backgrounds.resolve(S.doc, pg), { x0: b.x0, y0: b.y0, x1: b.x0 + b.w, y1: b.y0 + b.h }, k);
   if (pg.background) {
     try { c.drawImage(await loadImage(await mediaUrl(S.path, pg.background)), 0, 0, pg.width, pg.height); }
     catch (_) { /* missing media: export the rest alone */ }

@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, GraphObject, ImageObject, PageObject, Point, Shape, ShapeKind, Stroke, View};
+use nebo_core::{package, BackgroundStyle, vault, Document, Error, GraphObject, ImageObject, PageObject, Point, Shape, ShapeKind, Stroke, View};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -215,25 +215,75 @@ fn shape_objects_roundtrip_with_other_objects() {
 }
 
 #[test]
-fn page_template_and_pdf_image_source_roundtrip() {
+fn page_style_and_pdf_image_source_roundtrip() {
     let mut d = with_image();
-    d.pages[0].template = Some("dotted".into());
+    d.pages[0].style = Some(BackgroundStyle { pattern: "dot".into(), color: "#1e1e1e".into() });
     let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
     im.source = Some("pdf".into());
     let back = package::read(&package::write(&d).unwrap()).unwrap();
     assert_eq!(back, d);
-    assert_eq!(back.pages[0].template.as_deref(), Some("dotted"));
+    assert_eq!(back.pages[0].style.as_ref().unwrap().pattern, "dot");
 }
 
 #[test]
-fn old_pages_have_no_template_and_unknown_values_rejected() {
-    let back = package::read(&package::write(&sample()).unwrap()).unwrap();
-    assert!(back.pages[0].template.is_none());
+fn notebook_default_style_roundtrips() {
     let mut d = sample();
-    d.pages[0].template = Some("<script>".into());
-    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+    d.style = Some(BackgroundStyle { pattern: "paper".into(), color: "#f6f3ea".into() });
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert_eq!(back.style, d.style);
+    assert!(back.pages[0].style.is_none());
+}
+
+#[test]
+fn old_pages_have_no_style_and_bad_values_rejected() {
+    let back = package::read(&package::write(&sample()).unwrap()).unwrap();
+    assert!(back.pages[0].style.is_none() && back.style.is_none());
+    for (pattern, color) in [("<script>", "#ffffff"), ("grid", "red"), ("grid", "#12345"), ("grid", "#12345g"), ("dot", "#fff\"x")] {
+        let bad = BackgroundStyle { pattern: pattern.into(), color: color.into() };
+        let mut d = sample();
+        d.pages[0].style = Some(bad.clone());
+        assert!(matches!(package::write(&d), Err(Error::Invalid(_))), "{pattern} {color}");
+        let mut d = sample();
+        d.style = Some(bad);
+        assert!(matches!(package::write(&d), Err(Error::Invalid(_))), "{pattern} {color}");
+    }
     let mut d = with_image();
     let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
     im.source = Some("evil".into());
     assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+}
+
+/// Rebuild a package, rewriting every page.xml with `f`.
+fn with_page_xml(d: &Document, f: impl Fn(&str) -> String) -> Vec<u8> {
+    use std::io::{Read, Write};
+    let bytes = package::write(d).unwrap();
+    let mut zr = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for i in 0..zr.len() {
+        let mut e = zr.by_index(i).unwrap();
+        let name = e.name().to_string();
+        let mut data = Vec::new();
+        e.read_to_end(&mut data).unwrap();
+        if name.ends_with("/page.xml") {
+            data = f(&String::from_utf8(data).unwrap()).into_bytes();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+        out.write_all(&data).unwrap();
+    }
+    out.finish().unwrap().into_inner()
+}
+
+#[test]
+fn legacy_template_attribute_maps_to_style() {
+    for (tpl, pattern) in [("lined", "paper"), ("grid", "grid"), ("dotted", "dot")] {
+        let bytes = with_page_xml(&sample(), |x| x.replace("height=", &format!("template=\"{tpl}\" height=")));
+        let back = package::read(&bytes).unwrap();
+        let s = back.pages[0].style.as_ref().expect("legacy template becomes a style");
+        assert_eq!((s.pattern.as_str(), s.color.as_str()), (pattern, "#ffffff"), "{tpl}");
+        // and is written back in the new form
+        let again = package::read(&package::write(&back).unwrap()).unwrap();
+        assert_eq!(again.pages[0].style, back.pages[0].style);
+    }
+    let bytes = with_page_xml(&sample(), |x| x.replace("height=", "template=\"evil\" height="));
+    assert!(matches!(package::read(&bytes), Err(Error::Invalid(_))));
 }
