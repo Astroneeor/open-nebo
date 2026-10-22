@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, ImageObject, PageObject, Point, Stroke, View};
+use nebo_core::{package, vault, Document, Error, GraphObject, ImageObject, PageObject, Point, Stroke, View};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -153,15 +153,40 @@ fn documents_without_objects_still_load() {
 #[test]
 fn bad_image_input_rejected() {
     let mut d = with_image();
-    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
     im.id = "../x".into();
     assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
     let mut d = with_image();
-    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
     im.mime = "image/svg+xml".into();
     assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
     let mut d = with_image();
-    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
     im.data = "!!!".into();
     assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+}
+
+fn graph(id: &str, lo: f32, hi: f32) -> PageObject {
+    PageObject::Graph(GraphObject {
+        id: id.into(), x: 10.0, y: 20.0, size: 400.0,
+        xmin: lo, xmax: hi, ymin: lo, ymax: hi, step: 1.0, labels: true, axes: true, grid: true,
+    })
+}
+
+#[test]
+fn graph_objects_roundtrip_alongside_images() {
+    let mut d = with_image();
+    d.pages[0].objects.push(graph("g1", -5.0, 5.0));
+    d.pages[0].objects.push(graph("g2", -10.0, 10.0));
+    assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
+}
+
+#[test]
+fn graph_flags_default_when_missing() {
+    let o: PageObject = serde_json::from_str(
+        r#"{"type":"graph","id":"g","x":0,"y":0,"size":100,"xmin":0,"xmax":5,"ymin":0,"ymax":5}"#,
+    ).unwrap();
+    let PageObject::Graph(g) = o else { panic!("not a graph") };
+    assert!(g.labels && g.axes && g.grid);
+    assert_eq!(g.step, 1.0);
 }

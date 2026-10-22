@@ -28,7 +28,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use base64::Engine;
 
-use crate::model::{Document, ImageObject, OpaqueEntry, Page, PageObject, Stroke, View};
+use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Stroke, View};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -60,6 +60,7 @@ struct ObjectsFile {
 #[serde(tag = "type", rename_all = "lowercase")]
 enum ObjectMeta {
     Image { id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String },
+    Graph(GraphObject),
 }
 
 fn ext_for(mime: &str) -> Result<&'static str, Error> {
@@ -131,7 +132,14 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         if !p.objects.is_empty() {
             let mut metas = Vec::new();
             for o in &p.objects {
-                let PageObject::Image(im) = o;
+                let im = match o {
+                    PageObject::Image(im) => im,
+                    PageObject::Graph(g) => {
+                        safe_id(&g.id)?;
+                        metas.push(ObjectMeta::Graph(g.clone()));
+                        continue;
+                    }
+                };
                 let image_id = safe_id(&im.id)?;
                 let media = format!("media/{image_id}.{}", ext_for(&im.mime)?);
                 let bytes = base64::engine::general_purpose::STANDARD
@@ -255,7 +263,15 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         if zip.file_names().any(|n| n == obj_path) {
             let file: ObjectsFile = serde_json::from_slice(&read_entry(&mut zip, &obj_path)?)?;
             claimed.push(obj_path);
-            for ObjectMeta::Image { id: image_id, x, y, w, h, mime, media } in file.objects {
+            for meta in file.objects {
+                let (image_id, x, y, w, h, mime, media) = match meta {
+                    ObjectMeta::Image { id, x, y, w, h, mime, media } => (id, x, y, w, h, mime, media),
+                    ObjectMeta::Graph(g) => {
+                        safe_id(&g.id)?;
+                        objects.push(PageObject::Graph(g));
+                        continue;
+                    }
+                };
                 let ext = ext_for(&mime)?;
                 if media != format!("media/{}.{ext}", safe_id(&image_id)?) {
                     return Err(Error::Invalid(format!("image {image_id}: bad media path {media:?}")));

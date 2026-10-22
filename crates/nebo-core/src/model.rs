@@ -64,7 +64,40 @@ pub struct Page {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum PageObject {
     Image(ImageObject),
+    Graph(GraphObject),
 }
+
+/// A coordinate grid / graph-paper block. Height follows from `size` (the
+/// width in page units) and the axis ranges, so cells stay square.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GraphObject {
+    pub id: String,
+    /// Top-left corner in page units.
+    pub x: f32,
+    pub y: f32,
+    pub size: f32,
+    pub xmin: f32,
+    pub xmax: f32,
+    pub ymin: f32,
+    pub ymax: f32,
+    #[serde(default = "default_step")]
+    pub step: f32,
+    #[serde(default = "yes")]
+    pub labels: bool,
+    #[serde(default = "yes")]
+    pub axes: bool,
+    #[serde(default = "yes")]
+    pub grid: bool,
+}
+
+fn default_step() -> f32 {
+    1.0
+}
+
+fn yes() -> bool {
+    true
+}
+
 
 /// A pasted/dropped raster image. In memory (and over IPC) the bytes travel as
 /// base64 in `data`; in the package they live in `media/<id>.<ext>`.

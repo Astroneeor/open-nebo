@@ -63,9 +63,11 @@ function render() {
   if (!S.doc) return;
   V.begin(ctx);
   Images.draw(ctx, page());
+  if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
   page().strokes.forEach(drawStroke);
   if (S.current) drawStroke(S.current);
   Images.overlay(ctx, page());
+  if (typeof Graphs !== "undefined") Graphs.drawOverlay(ctx);
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
