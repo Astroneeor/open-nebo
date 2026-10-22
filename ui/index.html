@@ -26,7 +26,8 @@
     <button id="pen" class="on">Pen</button>
     <button id="eraser">Eraser</button>
     <button id="smart" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)">Shapes</button>
-    <button id="undo">Undo</button>
+    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="redo" title="Redo (Ctrl+Shift+Z / Ctrl+Y)">Redo</button>
     <span class="sep"></span>
     <button id="prev">‹</button><span id="pageNo">–</span><button id="next">›</button>
     <button id="addPage">+ Page</button>
@@ -38,10 +39,11 @@
   <div id="banner" hidden></div>
   <div id="stage"><canvas id="cv"></canvas></div>
 </main>
+<script src="history.js"></script>
 <script src="view.js"></script>
 <script src="shapes.js"></script>
 <script src="selection-geom.js"></script>
-<script src="selection.js"></script> <!-- before images.js: its capturing select handlers must run first -->
+<script src="selection.js"></script> <!-- before app.js: its capturing pointer handlers must win in select mode -->
 <script src="images.js"></script>
 <script src="colorpicker.js"></script>
 <script src="app.js"></script>

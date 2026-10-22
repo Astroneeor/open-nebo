@@ -77,7 +77,62 @@ const Geom = (() => {
     return Math.max(min, ((p.x - anchor.x) * vx + (p.y - anchor.y) * vy) / len2);
   }
 
-  return { pointInPolygon, bounds, strokeBounds, unionBounds, boxCenter, inBox, rectPolygon, distToSegment,
+  // ---------- page objects: image {x,y,w,h}, graph {x,y,size,xmin..ymax}, shape {kind,points,width} ----------
+  const graphBox = (g) => ({ x: g.x, y: g.y, w: g.size, h: g.size * (g.ymax - g.ymin) / (g.xmax - g.xmin) });
+  const shapePts = (s) => s.points.map(([x, y]) => ({ x, y }));
+  // Ellipses store [centre, [rx, ry]]; every other kind stores vertices.
+  function shapeBox(s) {
+    if (s.kind === "ellipse") {
+      const [[cx, cy], [rx, ry]] = s.points;
+      return pad({ x: cx - rx, y: cy - ry, w: 2 * rx, h: 2 * ry }, (s.width || 2) / 2);
+    }
+    return pad(bounds(shapePts(s)), (s.width || 2) / 2);
+  }
+  function objectBox(o) {
+    if (o.type === "graph") return graphBox(o);
+    if (o.type === "shape") return shapeBox(o);
+    return { x: o.x, y: o.y, w: o.w, h: o.h };
+  }
+  // Representative points used for lasso inclusion (vertices; 8 points around an ellipse).
+  function shapeSamples(s) {
+    if (s.kind !== "ellipse") return shapePts(s);
+    const [[cx, cy], [rx, ry]] = s.points;
+    return Array.from({ length: 8 }, (_, i) => ({ x: cx + rx * Math.cos(i * Math.PI / 4), y: cy + ry * Math.sin(i * Math.PI / 4) }));
+  }
+  const MIN_GRAPH = 40;
+  // Field values for object `o` after transform t (the object is not modified).
+  // Graphs and images cannot be mirrored, so a flip only moves them; ellipses stay axis-aligned.
+  function transformObject(o, t) {
+    if (o.type === "shape") {
+      if (o.kind === "ellipse") {
+        const [[cx, cy], [rx, ry]] = o.points, c = transformPoint({ x: cx, y: cy }, t);
+        return { points: [[c.x, c.y], [rx * Math.abs(t.sx), ry * Math.abs(t.sy)]] };
+      }
+      return { points: o.points.map(([x, y]) => { const q = transformPoint({ x, y }, t); return [q.x, q.y]; }) };
+    }
+    const b = transformBox(objectBox(o), t);
+    if (o.type === "graph") return { x: b.x, y: b.y, size: Math.max(MIN_GRAPH, b.w) };
+    return { x: b.x, y: b.y, w: b.w, h: b.h };
+  }
+  // Distance-based hit test against a shape's outline.
+  function nearShape(s, p, tol) {
+    const P = s.points, w = (s.width || 2) / 2;
+    if (s.kind === "ellipse") {
+      const rx = P[1][0], ry = P[1][1];
+      return Math.abs(Math.hypot((p.x - P[0][0]) / rx, (p.y - P[0][1]) / ry) - 1) * Math.min(rx, ry) < tol + w;
+    }
+    const closed = s.kind === "rect" || s.kind === "triangle", m = closed ? P.length : P.length - 1;
+    for (let i = 0; i < m; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      if (distToSegment(p, { x: a[0], y: a[1] }, { x: b[0], y: b[1] }) < tol + w) return true;
+    }
+    return false;
+  }
+  const boxInsidePolygon = (b, poly) =>
+    [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }, { x: b.x, y: b.y + b.h }, { x: b.x + b.w, y: b.y + b.h }].every((c) => pointInPolygon(c, poly));
+
+  return { graphBox, shapeBox, objectBox, shapeSamples, transformObject, nearShape, boxInsidePolygon, MIN_GRAPH,
+           pointInPolygon, bounds, strokeBounds, unionBounds, boxCenter, inBox, rectPolygon, distToSegment,
            nearPolyline, fractionInside, translate, scaleAbout, flipAbout, transformPoint, transformBox, cornerScale };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = Geom;
