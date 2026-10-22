@@ -43,6 +43,7 @@ async function openPath(path) {
   try {
     const { doc, rev } = await invoke("open_doc", { path });
     Object.assign(S, { path, doc, rev, page: 0, dirty: false });
+    History.reset();
     banner(null); status(""); render(); refreshList();
   } catch (e) { banner("Cannot open: " + e); }
 }
@@ -68,13 +69,11 @@ function render() {
   window.__app?.hooks.bg?.(ctx, page());
   Images.draw(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
-  page().strokes.forEach(drawStroke);
+  page().strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
   (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
-  Images.overlay(ctx, page());
   Selection.overlay(ctx, page());
-  if (typeof Graphs !== "undefined") Graphs.drawOverlay(ctx);
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
@@ -128,7 +127,7 @@ cv.addEventListener("pointerdown", (ev) => {
   if (V.down(ev)) { S.current = null; S.erasing = false; render(); return; }
   cv.setPointerCapture(ev.pointerId);
   const p = pos(ev);
-  if (S.tool === "eraser") { S.erasing = true; eraseAt(p); return; }
+  if (S.tool === "eraser") { S.erasing = true; S.eraseTok = History.begin(page()); eraseAt(p); return; }
   S.t0 = performance.now();
   S.current = { id: uid(), color: $("color").value, width: +$("width").value,
                 points: [{ ...p, t: 0, p: ev.pressure || 0.5 }] };
@@ -150,17 +149,16 @@ cv.addEventListener("pointermove", (ev) => {
 });
 const end = (ev) => {
   if (V.up(ev)) return;
+  if (S.erasing && S.eraseTok) { History.commit(S.eraseTok, "erase"); S.eraseTok = null; }
   S.erasing = false;
   const s = S.current;
   if (!s) return;
   const shape = S.smart ? (S.snap || snapOf(s)) : null;
   cancelHold(); S.current = null;
-  if (shape) {
-    (page().objects || (page().objects = [])).push(shape);
-    Images.logAdd(page().id, shape);
-  } else {
-    page().strokes.push(s); Images.logStroke();
-  }
+  const pg = page();
+  History.record(pg, shape ? "shape" : "stroke", () => {
+    if (shape) (pg.objects || (pg.objects = [])).push(shape); else pg.strokes.push(s);
+  });
   touch(); render();
 };
 cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
@@ -168,7 +166,19 @@ cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end)
 // ---------- toolbar ----------
 function tool(t) { S.tool = t; $("pen").classList.toggle("on", t === "pen"); $("eraser").classList.toggle("on", t === "eraser"); }
 $("pen").onclick = () => tool("pen"); $("eraser").onclick = () => tool("eraser");
-$("undo").onclick = () => { if (S.doc && !Images.undo() && page().strokes.pop()) { touch(); render(); } };
+function stepHistory(redo) {
+  if (!S.doc || S.conflict) return;
+  if (!(redo ? History.redo() : History.undo())) { status(redo ? "Nothing to redo" : "Nothing to undo"); return; }
+  touch(); render();
+}
+$("undo").onclick = () => stepHistory(false);
+$("redo").onclick = () => stepHistory(true);
+window.addEventListener("keydown", (ev) => {
+  if (!(ev.ctrlKey || ev.metaKey) || /^(INPUT|TEXTAREA|SELECT)$/.test((ev.target || {}).tagName || "")) return;
+  const k = ev.key.toLowerCase();
+  if (k === "z") { ev.preventDefault(); stepHistory(ev.shiftKey); }
+  else if (k === "y") { ev.preventDefault(); stepHistory(true); }
+});
 $("smart").classList.toggle("on", S.smart);
 $("smart").onclick = () => {
   S.smart = !S.smart; lsSet("smartShapes", S.smart ? "1" : "0");
@@ -204,6 +214,7 @@ $("stignore").onclick = async () => {
 };
 $("zoomIn").onclick = () => V.zoomBy(1.25); $("zoomOut").onclick = () => V.zoomBy(0.8);
 $("resetView").onclick = () => S.doc && V.reset(page());
+History.bind((id) => S.doc && S.doc.pages.find((p) => p.id === id), (pg) => { S.page = S.doc.pages.indexOf(pg); });
 V.init(cv, $("stage"), () => S.doc && page(), () => { render(); $("zoomPct").textContent = Math.round(V.zoom * 100) + "%"; });
 window.addEventListener("resize", render);
 window.addEventListener("beforeunload", () => { if (S.dirty) saveNow(); });
@@ -221,6 +232,7 @@ listen("vault-changed", () => {
       const { doc, rev } = await invoke("open_doc", { path: S.path });
       if (rev !== S.rev) {
         Object.assign(S, { doc, rev, page: Math.min(S.page, doc.pages.length - 1) });
+        History.reset();
         status("Updated from sync"); render();
       }
     } catch (_) { /* file may be mid-replace; the next event retries */ }

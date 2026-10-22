@@ -84,3 +84,54 @@ test("scale then inverse scale restores points", () => {
   const q = G.transformPoint(G.transformPoint(p, G.scaleAbout(anchor.x, anchor.y, 2.5)), G.scaleAbout(anchor.x, anchor.y, 1 / 2.5));
   close(q.x, p.x); close(q.y, p.y);
 });
+
+// ---------- graph / shape objects ----------
+const gr = { type: "graph", id: "g", x: 10, y: 20, size: 200, xmin: -5, xmax: 5, ymin: -5, ymax: 5 };
+const ell = { type: "shape", id: "e", kind: "ellipse", width: 2, points: [[100, 100], [40, 20]] };
+const tri = { type: "shape", id: "t", kind: "triangle", width: 2, points: [[0, 0], [100, 0], [50, 80]] };
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test("objectBox covers images, graphs (aspect follows axis ranges) and shapes (padded by half the width)", () => {
+  assert.deepEqual(plain(G.objectBox({ type: "image", x: 1, y: 2, w: 3, h: 4 })), { x: 1, y: 2, w: 3, h: 4 });
+  assert.deepEqual(plain(G.objectBox({ ...gr, ymax: 15 })), { x: 10, y: 20, w: 200, h: 400 });
+  assert.deepEqual(plain(G.objectBox(ell)), { x: 59, y: 79, w: 82, h: 42 });
+  assert.deepEqual(plain(G.objectBox(tri)), { x: -1, y: -1, w: 102, h: 82 });
+});
+
+test("transformObject translates and scales graphs, shapes and images", () => {
+  const sc = G.scaleAbout(10, 20, 2);
+  assert.deepEqual(plain(G.transformObject(gr, sc)), { x: 10, y: 20, size: 400 });
+  assert.deepEqual(plain(G.transformObject(ell, sc)), { points: [[190, 180], [80, 40]] });
+  assert.deepEqual(plain(G.transformObject(tri, G.translate(5, 5))), { points: [[5, 5], [105, 5], [55, 85]] });
+  assert.deepEqual(plain(G.transformObject({ type: "image", x: 0, y: 0, w: 10, h: 20 }, sc)), { x: -10, y: -20, w: 20, h: 40 });
+});
+
+test("graphs never shrink below the minimum size and flips only move them", () => {
+  assert.equal(G.transformObject(gr, G.scaleAbout(0, 0, 0.05)).size, G.MIN_GRAPH);
+  const f = G.transformObject(gr, G.flipAbout({ x: 0, y: 0, w: 220, h: 220 }, "h"));
+  assert.equal(f.size, 200);
+});
+
+test("flipping a shape mirrors its vertices; ellipse radii stay positive", () => {
+  const t = G.flipAbout({ x: 0, y: 0, w: 100, h: 100 }, "h");
+  assert.deepEqual(plain(G.transformObject(tri, t).points), [[100, 0], [0, 0], [50, 80]]);
+  assert.deepEqual(plain(G.transformObject(ell, t).points), [[0, 100], [40, 20]]);
+});
+
+test("nearShape hits outlines, not interiors", () => {
+  assert.ok(G.nearShape(ell, { x: 140, y: 100 }, 2));
+  assert.ok(!G.nearShape(ell, { x: 100, y: 100 }, 2));
+  assert.ok(G.nearShape(tri, { x: 50, y: 1 }, 2));
+  assert.ok(!G.nearShape(tri, { x: 50, y: 30 }, 2));
+  const line = { kind: "line", width: 2, points: [[0, 0], [100, 0]] };
+  assert.ok(G.nearShape(line, { x: 50, y: 4 }, 4));
+  assert.ok(!G.nearShape(line, { x: 50, y: 10 }, 4));
+});
+
+test("shapeSamples and boxInsidePolygon", () => {
+  assert.equal(G.shapeSamples(ell).length, 8);
+  assert.equal(G.shapeSamples(tri).length, 3);
+  const poly = G.rectPolygon({ x: 0, y: 0 }, { x: 100, y: 100 });
+  assert.ok(G.boxInsidePolygon({ x: 10, y: 10, w: 50, h: 50 }, poly));
+  assert.ok(!G.boxInsidePolygon({ x: 10, y: 10, w: 150, h: 50 }, poly));
+});

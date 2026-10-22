@@ -16,6 +16,18 @@ and APIs may change in any release.
   (`media/page-N.png` in the package, preserved on roundtrip). Rendering uses a vendored pdf.js.
 - PDF export: pages are composited (background + ink) and written as a PDF.
 - `Page.background` (optional, backwards compatible).
+- Redo (button, Ctrl+Shift+Z, Ctrl+Y) on one shared history (`ui/history.js`) that covers strokes,
+  shape snaps, erasing, image/graph/shape add, move, scale, delete, paste, reorder, flip, recolor and
+  graph parameter edits. A new action clears the redo stack.
+- The Select tool (lasso, marquee, click, Shift-click) now covers graphs and shapes as well as strokes and
+  images. They stay vector objects through copy, cut, paste and duplicate. Shapes can be recoloured.
+  A tap selects a graph; a drag that starts on an unselected graph is a lasso, so you can still select ink
+  written on it. The graph parameter panel follows the selection.
+
+### Fixed
+- Strokes did not render after the PDF merge: `strokes.forEach(drawStroke)` passed the index as
+  `drawStroke`'s new canvas-context parameter.
+- Erasing was not undoable.
 
 ## [0.1.1] - 2026-10-22
 
