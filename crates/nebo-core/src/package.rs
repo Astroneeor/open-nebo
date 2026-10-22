@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::model::{Document, OpaqueEntry, Page, Stroke};
+use crate::model::{Document, OpaqueEntry, Page, Stroke, View};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -44,6 +44,8 @@ struct Meta {
 #[derive(Serialize, Deserialize)]
 struct InkFile {
     strokes: Vec<Stroke>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    view: Option<View>,
 }
 
 fn esc(s: &str) -> String {
@@ -99,7 +101,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         zw.start_file(format!("pages/{id}/page.xml"), deflated)?;
         zw.write_all(page_xml.as_bytes())?;
         zw.start_file(format!("pages/{id}/ink.jink"), deflated)?;
-        zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone() })?)?;
+        zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone(), view: p.view })?)?;
     }
 
     for o in &doc.opaque {
@@ -195,10 +197,10 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         safe_id(id)?;
         let (px, ink) = (format!("pages/{id}/page.xml"), format!("pages/{id}/ink.jink"));
         let (w, h) = page_dims(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0));
-        let strokes = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?.strokes;
+        let InkFile { strokes, view } = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?;
         claimed.push(px);
         claimed.push(ink);
-        pages.push(Page { id: id.clone(), width: w, height: h, strokes });
+        pages.push(Page { id: id.clone(), width: w, height: h, strokes, view });
     }
 
     let mut opaque = Vec::new();

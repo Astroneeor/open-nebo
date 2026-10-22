@@ -46,13 +46,6 @@ async function openPath(path) {
 
 function page() { return S.doc.pages[S.page]; }
 
-function fit() {
-  const p = page();
-  cv.width = p.width; cv.height = p.height;
-  const scale = Math.min(1, ($("stage").clientWidth - 32) / p.width);
-  cv.style.width = p.width * scale + "px"; cv.style.height = p.height * scale + "px";
-}
-
 function drawStroke(s) {
   if (!s.points.length) return;
   ctx.strokeStyle = s.color; ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -65,11 +58,13 @@ function drawStroke(s) {
 }
 
 function render() {
-  if (!S.doc) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
-  fit();
+  V.sync(S.doc && page());
   ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!S.doc) return;
+  V.begin(ctx);
   page().strokes.forEach(drawStroke);
   if (S.current) drawStroke(S.current);
+  V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
 
@@ -90,19 +85,17 @@ async function saveNow() {
 }
 
 // ---------- input ----------
-function pos(ev) {
-  const r = cv.getBoundingClientRect();
-  return { x: (ev.clientX - r.left) * cv.width / r.width, y: (ev.clientY - r.top) * cv.height / r.height };
-}
+const pos = (ev) => V.toWorld(ev);
 
 function eraseAt(p) {
-  const r = 14, strokes = page().strokes;
+  const r = 14 / V.zoom, strokes = page().strokes;
   const keep = strokes.filter((s) => !s.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < r + s.width));
   if (keep.length !== strokes.length) { page().strokes = keep; touch(); render(); }
 }
 
 cv.addEventListener("pointerdown", (ev) => {
   if (!S.doc || S.conflict) return;
+  if (V.down(ev)) { S.current = null; S.erasing = false; render(); return; }
   cv.setPointerCapture(ev.pointerId);
   const p = pos(ev);
   if (S.tool === "eraser") { S.erasing = true; eraseAt(p); return; }
@@ -112,13 +105,15 @@ cv.addEventListener("pointerdown", (ev) => {
   render();
 });
 cv.addEventListener("pointermove", (ev) => {
+  if (V.move(ev)) return;
   const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
   if (S.erasing) { evs.forEach((e) => eraseAt(pos(e))); return; }
   if (!S.current) return;
   for (const e of evs) S.current.points.push({ ...pos(e), t: Math.round(performance.now() - S.t0), p: e.pressure || 0.5 });
   render();
 });
-const end = () => {
+const end = (ev) => {
+  if (V.up(ev)) return;
   S.erasing = false;
   if (S.current) { page().strokes.push(S.current); S.current = null; touch(); render(); }
 };
@@ -156,6 +151,9 @@ $("pickVault").onclick = async () => {
 $("stignore").onclick = async () => {
   try { await invoke("write_stignore", { dir: S.vault }); status("Wrote .stignore"); } catch (e) { banner(String(e)); }
 };
+$("zoomIn").onclick = () => V.zoomBy(1.25); $("zoomOut").onclick = () => V.zoomBy(0.8);
+$("resetView").onclick = () => S.doc && V.reset(page());
+V.init(cv, $("stage"), () => S.doc && page(), () => { render(); $("zoomPct").textContent = Math.round(V.zoom * 100) + "%"; });
 window.addEventListener("resize", render);
 window.addEventListener("beforeunload", () => { if (S.dirty) saveNow(); });
 

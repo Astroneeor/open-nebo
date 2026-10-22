@@ -25,11 +25,15 @@
     <span class="sep"></span>
     <button id="prev">‹</button><span id="pageNo">–</span><button id="next">›</button>
     <button id="addPage">+ Page</button>
+    <span class="sep"></span>
+    <button id="zoomOut" title="Zoom out">−</button><span id="zoomPct" class="muted">100%</span><button id="zoomIn" title="Zoom in">+</button>
+    <button id="resetView" title="Reset view">Reset view</button>
     <span id="status" class="muted"></span>
   </header>
   <div id="banner" hidden></div>
   <div id="stage"><canvas id="cv"></canvas></div>
 </main>
+<script src="view.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
