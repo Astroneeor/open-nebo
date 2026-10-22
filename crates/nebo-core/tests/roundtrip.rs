@@ -138,7 +138,7 @@ fn with_image() -> Document {
     use base64::Engine;
     let mut d = sample();
     d.pages[0].objects.push(PageObject::Image(ImageObject {
-        id: "img1".into(), x: 10.0, y: 20.0, w: 100.0, h: 50.0, mime: "image/png".into(),
+        id: "img1".into(), x: 10.0, y: 20.0, w: 100.0, h: 50.0, mime: "image/png".into(), source: None,
         data: base64::engine::general_purpose::STANDARD.encode([0x89, b'P', b'N', b'G', 1, 2, 3]),
     }));
     d
@@ -212,4 +212,28 @@ fn shape_objects_roundtrip_with_other_objects() {
         points: vec![[0.0, 0.0], [50.0, 25.0]],
     }));
     assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
+}
+
+#[test]
+fn page_template_and_pdf_image_source_roundtrip() {
+    let mut d = with_image();
+    d.pages[0].template = Some("dotted".into());
+    let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
+    im.source = Some("pdf".into());
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert_eq!(back, d);
+    assert_eq!(back.pages[0].template.as_deref(), Some("dotted"));
+}
+
+#[test]
+fn old_pages_have_no_template_and_unknown_values_rejected() {
+    let back = package::read(&package::write(&sample()).unwrap()).unwrap();
+    assert!(back.pages[0].template.is_none());
+    let mut d = sample();
+    d.pages[0].template = Some("<script>".into());
+    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+    let mut d = with_image();
+    let PageObject::Image(im) = &mut d.pages[0].objects[0] else { panic!() };
+    im.source = Some("evil".into());
+    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
 }
