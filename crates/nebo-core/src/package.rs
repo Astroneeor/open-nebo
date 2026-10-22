@@ -28,7 +28,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use base64::Engine;
 
-use crate::model::{Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
+use crate::model::{DocKind, Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
 use crate::Error;
 
 pub const MIME: &str = "application/vnd.myscript.nebo";
@@ -41,6 +41,8 @@ struct Meta {
     format_version: String,
     title: String,
     generator: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kind: Option<DocKind>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -123,6 +125,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         format_version: FORMAT_VERSION.into(),
         title: doc.title.clone(),
         generator: "open-nebo".into(),
+        kind: doc.kind,
     };
     zw.start_file("meta.json", deflated)?;
     zw.write_all(&serde_json::to_vec_pretty(&meta)?)?;
@@ -355,5 +358,5 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         opaque.push(OpaqueEntry { name, data });
     }
 
-    Ok(Document { title: meta.title, pages, opaque })
+    Ok(Document { title: meta.title, pages, kind: meta.kind, opaque })
 }

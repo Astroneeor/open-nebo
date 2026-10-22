@@ -6,20 +6,14 @@
 <title>Open Nebo</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="graphs.css">
+<link rel="stylesheet" href="library.css">
 </head>
 <body>
-<aside id="side">
-  <div class="row"><strong>Notebooks</strong><button id="newBtn" title="New notebook">+</button></div>
-  <form id="newForm" hidden><input id="newName" placeholder="Notebook name" autocomplete="off"></form>
-  <div id="vaultPath" class="muted"></div>
-  <button id="pickVault" class="link">Change folder…</button>
-  <button id="stignore" class="link">Create .stignore</button>
-  <button id="importPdf" class="link">Import PDF…</button>
-  <button id="exportPdf" class="link">Export as PDF…</button>
-  <ul id="list"></ul>
-</aside>
-<main>
+<section id="library" aria-label="Library"></section>
+<main id="editor" hidden>
   <header id="bar">
+    <button id="backLib" title="Back to library">‹ Library</button>
+    <span class="sep"></span>
     <input id="color" type="hidden" value="#000000">
     <button id="colorBtn" class="colorbtn" type="button" title="Pen colour" aria-haspopup="dialog" aria-expanded="false"></button>
     <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
@@ -34,6 +28,9 @@
     <span class="sep"></span>
     <button id="zoomOut" title="Zoom out">−</button><span id="zoomPct" class="muted">100%</span><button id="zoomIn" title="Zoom in">+</button>
     <button id="resetView" title="Reset view">Reset view</button>
+    <span class="sep"></span>
+    <button id="importPdf" title="Import a PDF into this notebook">Import PDF</button>
+    <button id="exportPdf" title="Export this notebook as a PDF">Export PDF</button>
     <span id="status" class="muted"></span>
   </header>
   <div id="banner" hidden></div>
@@ -51,6 +48,7 @@
 <script src="app.js"></script>
 <script src="graphs.js"></script>
 <script src="pages.js"></script>
+<script src="library.js"></script>
 <script type="module" src="pdf.js"></script>
 </body>
 </html>

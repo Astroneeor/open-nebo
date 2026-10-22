@@ -52,7 +52,7 @@ const toBlob = (canvas, type, q) => new Promise((res, rej) =>
 const MAX_CANVAS_PAGES = 40; // canvas-placed pages live in the notebook file as base64 images
 
 // Ask how to import. Resolves { mode: "notebook" | "canvas", pages: [1-based] } or null if cancelled.
-function askImport(total, canPlace) {
+function askImport(total, canPlace, notebookOnly = false) {
   return new Promise((resolve) => {
     const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
     const mk = (mode, title, hint, checked, disabled) => {
@@ -65,7 +65,7 @@ function askImport(total, canPlace) {
     const box = el("div", { className: "pdfdlg" },
       el("h3", { textContent: `Import PDF (${total} page${total === 1 ? "" : "s"})` }),
       mk("notebook", "As notebook pages", "A new notebook, one page per PDF page", true, false),
-      mk("canvas", "Place on canvas", canPlace ? "Drop the pages onto the current canvas as movable images" : "Open a notebook first", false, !canPlace),
+      ...(notebookOnly ? [] : [mk("canvas", "Place on canvas", canPlace ? "Drop the pages onto the current canvas as movable images" : "Open a notebook first", false, !canPlace)]),
       el("label", {}, "Pages", range), err,
       el("div", { className: "btns" }, no, ok));
     box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
@@ -128,7 +128,9 @@ async function placeOnCanvas(pdf, pageNumbers) {
   A.status(`Placed ${made.length} page${made.length === 1 ? "" : "s"} on the canvas`);
 }
 
-$$("importPdf").onclick = async () => {
+// `notebookOnly` (the library's Import PDF) always creates a new notebook, in `dir`;
+// from inside a notebook the dialog also offers placing the pages on the canvas.
+async function importPdf({ notebookOnly = false, dir } = {}) {
   const { S } = A;
   if (!S.vault) return;
   let task;
@@ -143,7 +145,7 @@ $$("importPdf").onclick = async () => {
     task = lib.getDocument({ data, isEvalSupported: false });
     const pdf = await task.promise;
 
-    const choice = await askImport(pdf.numPages, !!S.doc && !S.conflict);
+    const choice = await askImport(pdf.numPages, !!S.doc && !S.conflict, notebookOnly);
     if (!choice) { A.status(""); return; }
     if (choice.mode === "canvas") { await placeOnCanvas(pdf, choice.pages); return; }
 
@@ -158,7 +160,7 @@ $$("importPdf").onclick = async () => {
     }
 
     const title = file.split(/[\\/]/).pop().replace(/\.pdf$/i, "");
-    const { path, doc } = await invoke("begin_pdf_import", { dir: S.vault, title, sizes });
+    const { path, doc } = await invoke("begin_pdf_import", { dir: dir || S.vault, title, sizes });
 
     const canvas = document.createElement("canvas");
     for (let i = 0; i < pages.length; i++) {
@@ -178,12 +180,15 @@ $$("importPdf").onclick = async () => {
     A.render();
     await A.saveNow();
     await A.refreshList();
+    A.hooks.opened?.();
     A.status(`Imported ${pages.length} page${pages.length === 1 ? "" : "s"}`);
   } catch (e) {
     A.banner("PDF import failed: " + (e && e.message ? e.message : e));
     A.status("");
   } finally { if (task) task.destroy(); }
-};
+}
+A.importPdf = importPdf;
+$$("importPdf").onclick = () => importPdf();
 
 // ---------- export ----------
 function loadImage(url) {

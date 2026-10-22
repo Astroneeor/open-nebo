@@ -15,24 +15,21 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (_) { /* storag
 const status = (t) => { $("status").textContent = t; };
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 
-function banner(msg) { $("banner").hidden = !msg; $("banner").textContent = msg || ""; }
+function banner(msg) {
+  $("banner").hidden = !msg; $("banner").textContent = msg || "";
+  window.__app?.hooks.banner?.(msg);
+}
 
-// ---------- vault list ----------
+// ---------- vault ----------
+// The library (ui/library.js) owns the home screen; this keeps the flat recursive list it uses
+// for Recent and search.
 async function refreshList() {
   S.entries = await invoke("list_vault", { dir: S.vault });
-  const ul = $("list"); ul.replaceChildren();
-  for (const e of S.entries) {
-    const li = document.createElement("li");
-    li.textContent = e.name.replace(/\.nebo$/i, "");
-    if (e.is_conflict) li.classList.add("conflict");
-    if (e.path === S.path) li.classList.add("sel");
-    li.onclick = () => openPath(e.path);
-    ul.append(li);
-  }
+  if (typeof Library !== "undefined") Library.refresh();
 }
 
 async function setVault(dir) {
-  S.vault = dir; $("vaultPath").textContent = dir;
+  S.vault = dir;
   await invoke("watch_vault", { dir });
   await refreshList();
 }
@@ -44,7 +41,7 @@ async function openPath(path) {
     const { doc, rev } = await invoke("open_doc", { path });
     Object.assign(S, { path, doc, rev, page: 0, dirty: false });
     History.reset();
-    banner(null); status(""); render(); refreshList();
+    banner(null); status(""); render(); window.__app.hooks.opened?.();
   } catch (e) { banner("Cannot open: " + e); }
 }
 
@@ -192,26 +189,6 @@ $("addPage").onclick = () => {
   S.doc.pages.push({ id: `page-${uid()}`, width: base.width, height: base.height, strokes: [] });
   S.page = S.doc.pages.length - 1; touch(); render();
 };
-$("newBtn").onclick = () => { $("newForm").hidden = false; $("newName").value = ""; $("newName").focus(); };
-$("newForm").onsubmit = async (ev) => {
-  ev.preventDefault();
-  const title = $("newName").value.trim();
-  $("newForm").hidden = true;
-  if (!title) return;
-  try {
-    await invoke("new_doc", { dir: S.vault, title });
-    await refreshList();
-    const e = S.entries.find((x) => x.name === title.replace(/[^\p{L}\p{N} _-]/gu, "_") + ".nebo");
-    if (e) openPath(e.path);
-  } catch (e) { banner("Cannot create: " + e); }
-};
-$("pickVault").onclick = async () => {
-  const d = await dialog.open({ directory: true });
-  if (d) setVault(d);
-};
-$("stignore").onclick = async () => {
-  try { await invoke("write_stignore", { dir: S.vault }); status("Wrote .stignore"); } catch (e) { banner(String(e)); }
-};
 $("zoomIn").onclick = () => V.zoomBy(1.25); $("zoomOut").onclick = () => V.zoomBy(0.8);
 $("resetView").onclick = () => S.doc && V.reset(page());
 History.bind((id) => S.doc && S.doc.pages.find((p) => p.id === id), (pg) => { S.page = S.doc.pages.indexOf(pg); });
@@ -240,7 +217,7 @@ listen("vault-changed", () => {
 });
 
 // Extension surface for feature modules loaded after this script (ui/pdf.js, ...).
-window.__app = { S, hooks: {}, render, touch, saveNow, openPath, refreshList, drawStroke, page, status, banner, uid };
+window.__app = { S, hooks: {}, render, touch, saveNow, openPath, refreshList, setVault, drawStroke, page, status, banner, uid };
 
 (async () => {
   try { await setVault(await invoke("default_vault")); } catch (e) { banner(String(e)); }
