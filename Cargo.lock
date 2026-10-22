@@ -1982,6 +1982,7 @@ dependencies = [
 name = "nebo-core"
 version = "0.1.1"
 dependencies = [
+ "base64 0.22.1",
  "quick-xml 0.36.2",
  "serde",
  "serde_json",

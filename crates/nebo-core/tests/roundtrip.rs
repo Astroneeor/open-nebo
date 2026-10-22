@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, Point, Stroke};
+use nebo_core::{package, vault, Document, Error, ImageObject, PageObject, Point, Stroke};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -97,4 +97,48 @@ fn no_temp_file_left_after_save() {
     vault::save(&dir.path().join("a.nebo"), &sample(), None).unwrap();
     let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
     assert_eq!(names.len(), 1);
+}
+
+fn with_image() -> Document {
+    use base64::Engine;
+    let mut d = sample();
+    d.pages[0].objects.push(PageObject::Image(ImageObject {
+        id: "img1".into(), x: 10.0, y: 20.0, w: 100.0, h: 50.0, mime: "image/png".into(),
+        data: base64::engine::general_purpose::STANDARD.encode([0x89, b'P', b'N', b'G', 1, 2, 3]),
+    }));
+    d
+}
+
+#[test]
+fn image_objects_roundtrip() {
+    let d = with_image();
+    let bytes = package::write(&d).unwrap();
+    let back = package::read(&bytes).unwrap();
+    assert_eq!(back, d);
+    assert!(back.opaque.is_empty(), "media must not leak into opaque members");
+    let z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    assert!(z.file_names().any(|n| n == "media/img1.png"));
+}
+
+#[test]
+fn documents_without_objects_still_load() {
+    // pages written before objects existed have no objects.json
+    let back = package::read(&package::write(&sample()).unwrap()).unwrap();
+    assert!(back.pages[0].objects.is_empty());
+}
+
+#[test]
+fn bad_image_input_rejected() {
+    let mut d = with_image();
+    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    im.id = "../x".into();
+    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+    let mut d = with_image();
+    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    im.mime = "image/svg+xml".into();
+    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
+    let mut d = with_image();
+    let PageObject::Image(im) = &mut d.pages[0].objects[0];
+    im.data = "!!!".into();
+    assert!(matches!(package::write(&d), Err(Error::Invalid(_))));
 }

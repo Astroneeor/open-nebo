@@ -68,8 +68,10 @@ function render() {
   if (!S.doc) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
   fit();
   ctx.clearRect(0, 0, cv.width, cv.height);
+  Images.draw(ctx, page());
   page().strokes.forEach(drawStroke);
   if (S.current) drawStroke(S.current);
+  Images.overlay(ctx, page());
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
 
@@ -120,14 +122,14 @@ cv.addEventListener("pointermove", (ev) => {
 });
 const end = () => {
   S.erasing = false;
-  if (S.current) { page().strokes.push(S.current); S.current = null; touch(); render(); }
+  if (S.current) { page().strokes.push(S.current); S.current = null; Images.logStroke(); touch(); render(); }
 };
 cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
 
 // ---------- toolbar ----------
 function tool(t) { S.tool = t; $("pen").classList.toggle("on", t === "pen"); $("eraser").classList.toggle("on", t === "eraser"); }
 $("pen").onclick = () => tool("pen"); $("eraser").onclick = () => tool("eraser");
-$("undo").onclick = () => { if (S.doc && page().strokes.pop()) { touch(); render(); } };
+$("undo").onclick = () => { if (S.doc && !Images.undo() && page().strokes.pop()) { touch(); render(); } };
 $("prev").onclick = () => { if (S.doc && S.page > 0) { S.page--; render(); } };
 $("next").onclick = () => { if (S.doc && S.page < S.doc.pages.length - 1) { S.page++; render(); } };
 $("addPage").onclick = () => {
