@@ -1,4 +1,4 @@
-use nebo_core::{package, vault, Document, Error, Point, Stroke};
+use nebo_core::{package, vault, Document, Error, Point, Stroke, View};
 
 fn sample() -> Document {
     let mut d = Document::new("Notes & <ideas>");
@@ -15,6 +15,29 @@ fn sample() -> Document {
 fn roundtrip_preserves_content() {
     let d = sample();
     assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
+}
+
+#[test]
+fn infinite_canvas_coords_and_view_roundtrip() {
+    let mut d = sample();
+    d.pages[0].strokes[0].points[0] = Point { x: -5000.5, y: 90000.0, t: 0, p: 0.5 };
+    d.pages[0].view = Some(View { x: -120.0, y: 40.0, zoom: 0.25 });
+    assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
+}
+
+#[test]
+fn old_ink_without_view_still_opens() {
+    use std::io::Write;
+    let mut zw = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let o = zip::write::SimpleFileOptions::default();
+    let mut put = |n: &str, b: &[u8]| { zw.start_file(n, o).unwrap(); zw.write_all(b).unwrap(); };
+    put("mimeType", package::MIME.as_bytes());
+    put("meta.json", br#"{"format-version":"1","title":"old","generator":"open-nebo"}"#);
+    put("index.xml", br#"<document><pages><page id="p1"/></pages></document>"#);
+    put("pages/p1/page.xml", br#"<page id="p1" width="800" height="600"><content/></page>"#);
+    put("pages/p1/ink.jink", br#"{"strokes":[]}"#);
+    let d = package::read(&zw.finish().unwrap().into_inner()).unwrap();
+    assert_eq!((d.pages[0].width, d.pages[0].height, d.pages[0].view), (800.0, 600.0, None));
 }
 
 #[test]

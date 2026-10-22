@@ -34,17 +34,31 @@ fn default_width() -> f32 {
     2.0
 }
 
+/// Last pan/zoom of a page on the infinite canvas. `x`/`y` is the world point
+/// at the top-left of the viewport; `zoom` is screen pixels per world unit.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct View {
+    pub x: f32,
+    pub y: f32,
+    pub zoom: f32,
+}
+
+/// `width`/`height` are the size of the original paper sheet, kept for files
+/// written before the canvas became infinite; strokes may now lie outside it
+/// (negative coordinates included).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Page {
     pub id: String,
     pub width: f32,
     pub height: f32,
     pub strokes: Vec<Stroke>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view: Option<View>,
 }
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, strokes: Vec::new(), view: None }
     }
 }
 
