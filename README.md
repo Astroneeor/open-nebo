@@ -44,7 +44,7 @@ Linux needs `webkit2gtk-4.1`. Windows builds come from the GitHub Actions workfl
 - Files using Nebo's binary members (`*.bdom`, `*.bink`) are rejected with a clear error,
   not guessed at. Unknown archive members are preserved on save.
 - No handwriting recognition. MyScript's engine is proprietary; a recognizer plug-in point is future work.
-- No PDF import/export, shapes, math, or text-block editing.
+- PDF import/export is raster-only: imported pages are images (no text selection/links), export is a page image per page. JPEG 2000 images inside PDFs may not render. No shapes, math, or text-block editing.
 - Not tested with a physical pen/touch device.
 
 ## Disclaimer

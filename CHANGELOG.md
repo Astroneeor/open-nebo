@@ -7,6 +7,12 @@ and APIs may change in any release.
 
 ## [Unreleased]
 
+### Added
+- PDF import: each PDF page becomes a notebook page with the rendered page as a background
+  (`media/page-N.png` in the package, preserved on roundtrip). Rendering uses a vendored pdf.js.
+- PDF export: pages are composited (background + ink) and written as a PDF.
+- `Page.background` (optional, backwards compatible).
+
 ## [0.1.1] - 2026-10-22
 
 First packaged release (same feature set as 0.1.0; installers for Linux and Windows).

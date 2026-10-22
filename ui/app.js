@@ -53,14 +53,14 @@ function fit() {
   cv.style.width = p.width * scale + "px"; cv.style.height = p.height * scale + "px";
 }
 
-function drawStroke(s) {
+function drawStroke(s, c = ctx) {
   if (!s.points.length) return;
-  ctx.strokeStyle = s.color; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  c.strokeStyle = s.color; c.lineCap = "round"; c.lineJoin = "round";
   const pts = s.points;
-  if (pts.length === 1) { ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, s.width / 2, 0, 7); ctx.fill(); return; }
+  if (pts.length === 1) { c.fillStyle = s.color; c.beginPath(); c.arc(pts[0].x, pts[0].y, s.width / 2, 0, 7); c.fill(); return; }
   for (let i = 1; i < pts.length; i++) {
-    ctx.lineWidth = s.width * (0.4 + 1.2 * ((pts[i].p + pts[i - 1].p) / 2));
-    ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+    c.lineWidth = s.width * (0.4 + 1.2 * ((pts[i].p + pts[i - 1].p) / 2));
+    c.beginPath(); c.moveTo(pts[i - 1].x, pts[i - 1].y); c.lineTo(pts[i].x, pts[i].y); c.stroke();
   }
 }
 
@@ -68,7 +68,8 @@ function render() {
   if (!S.doc) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
   fit();
   ctx.clearRect(0, 0, cv.width, cv.height);
-  page().strokes.forEach(drawStroke);
+  if (window.__app.hooks.page) window.__app.hooks.page(page());
+  page().strokes.forEach((s) => drawStroke(s));
   if (S.current) drawStroke(S.current);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
@@ -177,6 +178,9 @@ listen("vault-changed", () => {
     } catch (_) { /* file may be mid-replace; the next event retries */ }
   }, 600);
 });
+
+// Extension surface for feature modules loaded after this script (ui/pdf.js, ...).
+window.__app = { S, hooks: {}, render, touch, saveNow, openPath, refreshList, drawStroke, page, status, banner, uid };
 
 (async () => {
   try { await setVault(await invoke("default_vault")); } catch (e) { banner(String(e)); }

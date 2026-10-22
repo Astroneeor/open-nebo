@@ -1,5 +1,6 @@
 pub mod model;
 pub mod package;
+pub mod pdf;
 pub mod vault;
 
 pub use model::{Document, Page, Point, Stroke};
