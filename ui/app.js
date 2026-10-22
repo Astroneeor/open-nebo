@@ -66,6 +66,7 @@ function render() {
   page().strokes.forEach(drawStroke);
   if (S.current) drawStroke(S.current);
   Images.overlay(ctx, page());
+  Selection.overlay(ctx, page());
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
