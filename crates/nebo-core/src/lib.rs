@@ -2,7 +2,7 @@ pub mod model;
 pub mod package;
 pub mod vault;
 
-pub use model::{Document, Page, Point, Stroke};
+pub use model::{Document, Page, PageObject, Point, Shape, ShapeKind, Stroke};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

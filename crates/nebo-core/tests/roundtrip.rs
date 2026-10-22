@@ -98,3 +98,41 @@ fn no_temp_file_left_after_save() {
     let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
     assert_eq!(names.len(), 1);
 }
+
+#[test]
+fn shapes_roundtrip() {
+    use nebo_core::{PageObject, Shape, ShapeKind};
+    let mut d = sample();
+    d.pages[0].objects.push(PageObject::Shape(Shape {
+        id: "sh1".into(),
+        kind: ShapeKind::Ellipse,
+        color: "#00ff00".into(),
+        width: 4.0,
+        points: vec![[10.0, 20.0], [5.0, 7.5]],
+    }));
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert_eq!(back, d);
+}
+
+#[test]
+fn ui_shaped_json_deserializes() {
+    // Exactly what ui/app.js sends for a recognised rectangle.
+    let json = serde_json::json!({
+        "id": "p", "width": 10.0, "height": 10.0, "strokes": [],
+        "objects": [{"type": "shape", "id": "x", "kind": "rect", "color": "#000000", "width": 2,
+                     "points": [[0, 0], [10, 0], [10, 5], [0, 5]]}]
+    });
+    let page: nebo_core::Page = serde_json::from_value(json).unwrap();
+    assert_eq!(page.objects.len(), 1);
+}
+
+#[test]
+fn pages_without_objects_still_open() {
+    // Pages written before `objects` existed (and pages the UI creates without it).
+    let json = serde_json::json!({"id": "p", "width": 10.0, "height": 10.0, "strokes": []});
+    let page: nebo_core::Page = serde_json::from_value(json).unwrap();
+    assert!(page.objects.is_empty());
+    // And a package with no objects writes none and reads back empty.
+    let back = package::read(&package::write(&sample()).unwrap()).unwrap();
+    assert!(back.pages[0].objects.is_empty());
+}

@@ -21,6 +21,7 @@
     <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
     <button id="pen" class="on">Pen</button>
     <button id="eraser">Eraser</button>
+    <button id="smart" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)">Shapes</button>
     <button id="undo">Undo</button>
     <span class="sep"></span>
     <button id="prev">‹</button><span id="pageNo">–</span><button id="next">›</button>
@@ -30,6 +31,7 @@
   <div id="banner" hidden></div>
   <div id="stage"><canvas id="cv"></canvas></div>
 </main>
+<script src="shapes.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
