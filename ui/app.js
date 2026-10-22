@@ -68,7 +68,7 @@ function render() {
   window.__app?.hooks.bg?.(ctx, page());
   Images.draw(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
-  page().strokes.forEach(drawStroke);
+  page().strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): forEach's index would become the ctx arg
   (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
