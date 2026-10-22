@@ -59,7 +59,11 @@ struct ObjectsFile {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 enum ObjectMeta {
-    Image { id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String },
+    Image {
+        id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
+    },
     Graph(GraphObject),
     Shape(Shape),
 }
@@ -86,6 +90,17 @@ fn safe_id(id: &str) -> Result<&str, Error> {
 }
 
 /// Backgrounds are archive paths written into page.xml, so they must stay under `media/`.
+pub fn safe_template(t: &str) -> Result<&str, Error> {
+    if crate::model::TEMPLATES.contains(&t) { Ok(t) } else { Err(Error::Invalid(format!("unknown page template {t:?}"))) }
+}
+
+fn safe_source(s: &Option<String>) -> Result<(), Error> {
+    match s.as_deref() {
+        None | Some("pdf") => Ok(()),
+        Some(o) => Err(Error::Invalid(format!("unknown image source {o:?}"))),
+    }
+}
+
 pub fn safe_media(name: &str) -> Result<&str, Error> {
     let ok = name.starts_with("media/")
         && name.len() > 6
@@ -136,8 +151,12 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
             Some(b) => format!(" background=\"{}\"", esc(safe_media(b)?)),
             None => String::new(),
         };
+        let tpl = match &p.template {
+            Some(t) => format!(" template=\"{}\"", esc(safe_template(t)?)),
+            None => String::new(),
+        };
         let page_xml = format!(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<page id=\"{}\" width=\"{}\" height=\"{}\"{bg}><content/></page>\n",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<page id=\"{}\" width=\"{}\" height=\"{}\"{bg}{tpl}><content/></page>\n",
             esc(id), p.width, p.height
         );
         zw.start_file(format!("pages/{id}/page.xml"), deflated)?;
@@ -162,6 +181,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
                     }
                 };
                 let image_id = safe_id(&im.id)?;
+                safe_source(&im.source)?;
                 let media = format!("media/{image_id}.{}", ext_for(&im.mime)?);
                 let bytes = base64::engine::general_purpose::STANDARD
                     .decode(&im.data)
@@ -174,6 +194,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
                 files.push(media.clone());
                 metas.push(ObjectMeta::Image {
                     id: im.id.clone(), x: im.x, y: im.y, w: im.w, h: im.h, mime: im.mime.clone(), media,
+                    source: im.source.clone(),
                 });
             }
             zw.start_file(format!("pages/{id}/objects.json"), deflated)?;
@@ -225,23 +246,26 @@ fn page_ids_from_index(xml: &[u8]) -> Result<Vec<String>, Error> {
     Ok(ids)
 }
 
-fn page_attrs(xml: &[u8]) -> Option<(f32, f32, Option<String>)> {
+type PageAttrs = (f32, f32, Option<String>, Option<String>);
+
+fn page_attrs(xml: &[u8]) -> Option<PageAttrs> {
     let mut reader = Reader::from_reader(xml);
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if e.local_name().as_ref() == b"page" => {
-                let (mut w, mut h, mut bg) = (None, None, None);
+                let (mut w, mut h, mut bg, mut tpl) = (None, None, None, None);
                 for a in e.attributes().flatten() {
                     let raw = a.unescape_value().ok()?.into_owned();
                     match a.key.as_ref() {
                         b"width" => w = raw.parse::<f32>().ok(),
                         b"height" => h = raw.parse::<f32>().ok(),
                         b"background" => bg = Some(raw),
+                        b"template" => tpl = Some(raw),
                         _ => {}
                     }
                 }
-                return w.zip(h).map(|(w, h)| (w, h, bg));
+                return w.zip(h).map(|(w, h)| (w, h, bg, tpl));
             }
             Ok(Event::Eof) | Err(_) => return None,
             _ => {}
@@ -275,8 +299,11 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
     for id in &ids {
         safe_id(id)?;
         let (px, ink) = (format!("pages/{id}/page.xml"), format!("pages/{id}/ink.jink"));
-        let (w, h, background) =
-            page_attrs(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0, None));
+        let (w, h, background, template) =
+            page_attrs(&read_entry(&mut zip, &px)?).unwrap_or((1404.0, 1872.0, None, None));
+        if let Some(t) = &template {
+            safe_template(t)?;
+        }
         if let Some(b) = &background {
             safe_media(b)?;
         }
@@ -290,8 +317,8 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
             let file: ObjectsFile = serde_json::from_slice(&read_entry(&mut zip, &obj_path)?)?;
             claimed.push(obj_path);
             for meta in file.objects {
-                let (image_id, x, y, w, h, mime, media) = match meta {
-                    ObjectMeta::Image { id, x, y, w, h, mime, media } => (id, x, y, w, h, mime, media),
+                let (image_id, x, y, w, h, mime, media, source) = match meta {
+                    ObjectMeta::Image { id, x, y, w, h, mime, media, source } => (id, x, y, w, h, mime, media, source),
                     ObjectMeta::Graph(g) => {
                         safe_id(&g.id)?;
                         objects.push(PageObject::Graph(g));
@@ -303,16 +330,17 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                         continue;
                     }
                 };
+                safe_source(&source)?;
                 let ext = ext_for(&mime)?;
                 if media != format!("media/{}.{ext}", safe_id(&image_id)?) {
                     return Err(Error::Invalid(format!("image {image_id}: bad media path {media:?}")));
                 }
                 let data = base64::engine::general_purpose::STANDARD.encode(read_entry(&mut zip, &media)?);
                 claimed.push(media);
-                objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data }));
+                objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data, source }));
             }
         }
-        pages.push(Page { id: id.clone(), width: w, height: h, background, strokes, view, objects });
+        pages.push(Page { id: id.clone(), width: w, height: h, background, template, strokes, view, objects });
     }
 
     let mut opaque = Vec::new();

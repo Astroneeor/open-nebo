@@ -40,3 +40,15 @@ canvas.pannable { cursor:grab; } canvas.panning { cursor:grabbing; }
 #selMenu { position:absolute; z-index:5; display:flex; gap:2px; align-items:center; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.25); white-space:nowrap; }
 #selMenu button { border:none; background:none; padding:4px 8px; } #selMenu button:hover:not(:disabled) { background:var(--bg); } #selMenu button:disabled { opacity:.4; cursor:default; }
 #selMenu label { display:flex; align-items:center; gap:4px; padding:0 6px; font-size:12px; } #selMenu input[type=color] { width:26px; height:22px; padding:0; border:none; background:none; }
+#pageMenuPop { position:fixed; z-index:20; display:flex; flex-direction:column; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.28); }
+#pageMenuPop[hidden] { display:none; }
+#pageMenuPop button { border:none; background:none; text-align:left; padding:6px 14px; }
+#pageMenuPop button:hover { background:var(--bg); }
+.pdfdlg-back { position:fixed; inset:0; z-index:30; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; }
+.pdfdlg { width:min(420px,92vw); padding:18px; display:flex; flex-direction:column; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+.pdfdlg h3 { margin:0; font-size:15px; }
+.pdfdlg label.opt { display:flex; gap:8px; align-items:flex-start; font-size:13px; }
+.pdfdlg label.opt small { display:block; color:#888; }
+.pdfdlg input[type=text] { padding:5px 8px; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+.pdfdlg .err { color:#e03131; font-size:12px; min-height:1em; }
+.pdfdlg .btns { display:flex; gap:8px; justify-content:flex-end; }

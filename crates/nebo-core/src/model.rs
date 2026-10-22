@@ -54,6 +54,9 @@ pub struct Page {
     /// Archive member under `media/` drawn behind the ink (e.g. an imported PDF page).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<String>,
+    /// Built-in ruled background drawn under the ink: `lined`, `grid` or `dotted`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template: Option<String>,
     pub strokes: Vec<Stroke>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
@@ -143,11 +146,17 @@ pub struct ImageObject {
     pub mime: String,
     #[serde(default)]
     pub data: String,
+    /// Where the image came from, e.g. `pdf` for pages placed on the canvas by PDF import.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
+
+/// Values accepted for `Page::template`.
+pub const TEMPLATES: [&str; 3] = ["lined", "grid", "dotted"];
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, strokes: Vec::new(), view: None, objects: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, template: None, strokes: Vec::new(), view: None, objects: Vec::new() }
     }
 }
 
