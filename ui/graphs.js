@@ -322,7 +322,7 @@ const Graphs = (() => {
     for (const id of ["pen", "eraser"]) $(id).addEventListener("click", () => setSelectTool(false));
     buildMenu(); buildPanel();
   }
-  init();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 
   return { draw, drawOverlay, insertPreset, insertPaper };
 })();
