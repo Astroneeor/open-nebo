@@ -137,6 +137,7 @@
   }
 
   function place() {
+    if (window.Chrome) return Chrome.placePopover(pop, btn);
     const r = btn.getBoundingClientRect();
     pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + "px";
     pop.style.top = Math.min(r.bottom + 6, Math.max(8, innerHeight - pop.offsetHeight - 8)) + "px";

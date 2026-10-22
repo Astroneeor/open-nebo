@@ -178,12 +178,12 @@ const Library = (() => {
 
   function itemMenu(it, x, y) {
     const items = it.folder
-      ? [{ label: "Open", run: () => navigate(it.path) }]
-      : [{ label: "Open", run: () => openNotebook(it.path) }];
-    items.push({ label: "Rename…", run: () => renameItem(it.path, it.folder, it.folder ? it.name : stem(it.name)) });
-    if (!it.folder) items.push({ label: "Duplicate", run: () => duplicateItem(it.path) });
-    items.push({ label: "Move to…", run: () => moveItem(it.path, it.folder) });
-    items.push({ label: "Delete", danger: true, run: () => trashItem(it.path, it.folder ? it.name : stem(it.name)) });
+      ? [{ label: "Open", icon: "open", run: () => navigate(it.path) }]
+      : [{ label: "Open", icon: "open", run: () => openNotebook(it.path) }];
+    items.push({ label: "Rename…", icon: "rename", run: () => renameItem(it.path, it.folder, it.folder ? it.name : stem(it.name)) });
+    if (!it.folder) items.push({ label: "Duplicate", icon: "duplicate", run: () => duplicateItem(it.path) });
+    items.push({ label: "Move to…", icon: "move", run: () => moveItem(it.path, it.folder) });
+    items.push({ label: "Delete", icon: "trash", danger: true, run: () => trashItem(it.path, it.folder ? it.name : stem(it.name)) });
     showMenu(x, y, items);
   }
 
@@ -381,6 +381,7 @@ const Library = (() => {
     if (notebooks.length) body.append(section("Notebooks", notebooks.map((e) => notebookCard(e))));
     if (!folders.length && !notebooks.length) {
       body.append(el("div", { className: "lib-empty" },
+        el("span", { className: "lib-empty-icon", dataset: { icon: "notebook" } }),
         el("p", { textContent: isRoot(L.dir) ? "No notebooks yet." : "This folder is empty." }),
         el("p", { className: "lib-hint", textContent: "Create a notebook or canvas, or import a PDF, to get started." })));
     }
@@ -399,7 +400,7 @@ const Library = (() => {
     };
     let acc = root;
     nav.append(crumb("All notebooks", root, rel.length === 0));
-    rel.forEach((part, i) => { acc += sep + part; nav.append(el("span", { className: "lib-crumb-sep", textContent: "/", attrs: { "aria-hidden": "true" } }), crumb(part, acc, i === rel.length - 1)); });
+    rel.forEach((part, i) => { acc += sep + part; nav.append(el("span", { className: "lib-crumb-sep", dataset: { icon: "chevron-right" }, attrs: { "aria-hidden": "true" } }), crumb(part, acc, i === rel.length - 1)); });
   }
 
   function treeNode(n, depth) {
@@ -411,7 +412,7 @@ const Library = (() => {
       style: `--depth:${depth}`,
     },
       depth && hasKids
-        ? el("button", { type: "button", className: "lib-twirl", textContent: open ? "▾" : "▸", attrs: { "aria-label": open ? "Collapse" : "Expand" },
+        ? el("button", { type: "button", className: "lib-twirl", dataset: { icon: open ? "chevron-down" : "chevron-right", iconSize: "14" }, attrs: { "aria-label": open ? "Collapse" : "Expand" },
             on: { click: (ev) => { ev.stopPropagation(); open ? L.expanded.delete(n.path) : L.expanded.add(n.path); lsSet("libExpanded", JSON.stringify([...L.expanded])); renderTree(); } } })
         : el("span", { className: "lib-twirl spacer" }),
       el("span", { className: "lib-tree-icon", dataset: { icon: depth ? "folder" : "library" } }),
@@ -484,16 +485,14 @@ const Library = (() => {
         el("nav", { id: "libTree", className: "lib-tree", attrs: { role: "tree", "aria-label": "Folders" } }),
         el("div", { className: "lib-side-foot" },
           el("div", { id: "libVault", className: "lib-vault muted" }),
-          el("button", { id: "libPick", type: "button", className: "lib-link", textContent: "Change folder…" }),
-          el("button", { id: "libIgnore", type: "button", className: "lib-link", textContent: "Create .stignore" }))),
+          el("button", { id: "libPick", type: "button", className: "lib-link", textContent: "Change folder…", dataset: { icon: "folder-cog" } }),
+          el("button", { id: "libIgnore", type: "button", className: "lib-link", textContent: "Create .stignore", dataset: { icon: "eye-off" } }))),
       el("div", { className: "lib-main" },
         el("header", { className: "lib-bar" },
           el("nav", { id: "libCrumbs", className: "lib-crumbs", attrs: { "aria-label": "Path" } }),
           el("input", { id: "libSearch", type: "search", className: "lib-search", placeholder: "Search notebooks", attrs: { "aria-label": "Search notebooks" } }),
           el("div", { className: "lib-actions" },
-            actionBtn("new-notebook", "notebook-plus", "New notebook", true),
-            actionBtn("new-canvas", "canvas-plus", "New canvas"),
-            actionBtn("new-folder", "folder-plus", "New folder"),
+            actionBtn("new-menu", "plus", "New", true),
             actionBtn("import-pdf", "file-import", "Import PDF"))),
         el("div", { id: "libBanner", className: "lib-banner", hidden: true, attrs: { role: "alert" } }),
         el("div", { id: "libBody", className: "lib-body" })));
@@ -502,10 +501,18 @@ const Library = (() => {
       "new-notebook": () => newNotebook(false),
       "new-canvas": () => newNotebook(true),
       "new-folder": newFolder,
+      "new-menu": (btn) => {
+        const r = btn.getBoundingClientRect();
+        showMenu(r.left, r.bottom + 6, [
+          { label: "New notebook", icon: "notebook-plus", run: () => newNotebook(false) },
+          { label: "New canvas", icon: "canvas-plus", run: () => newNotebook(true) },
+          { label: "New folder", icon: "folder-plus", run: newFolder },
+        ]);
+      },
       "import-pdf": () => A.importPdf?.({ notebookOnly: true, dir: L.dir }),
     };
     root.querySelector(".lib-actions").addEventListener("click", (ev) => {
-      const b = ev.target.closest("button[data-act]"); if (b) act[b.dataset.act]();
+      const b = ev.target.closest("button[data-act]"); if (b) act[b.dataset.act](b);
     });
     byId("libSearch").addEventListener("input", (ev) => { L.query = ev.target.value; renderBody(); });
     byId("libSearch").addEventListener("keydown", (ev) => { if (ev.key === "Escape") { ev.target.value = ""; L.query = ""; renderBody(); } });

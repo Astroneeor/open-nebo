@@ -46,6 +46,9 @@ const V = (() => {
       if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
         cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       }
+      // While the editor is hidden (the library is showing) the stage has no size: fitting now would clamp to the minimum
+      // zoom and stick. Wait for the first render after the editor is shown.
+      if (!w || !h) return;
       if (page && st.pageId !== page.id) {
         st.pageId = page.id;
         if (page.view) Object.assign(st, { x: page.view.x, y: page.view.y, zoom: clamp(page.view.zoom) });

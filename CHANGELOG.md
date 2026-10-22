@@ -8,6 +8,13 @@ and APIs may change in any release.
 ## [Unreleased]
 
 ### Changed
+- Visual redesign: a slim top bar, a floating, collapsible tool palette and icons in place of text
+  buttons (Lucide, ISC licence, vendored as `ui/icons.js`). One design system in `ui/style.css`
+  (colour, radius, shadow and type tokens) with light and dark themes that follow the system and a
+  manual toggle (remembered). Popovers, menus and dialogs share one look. The library has compact
+  folder tiles, a search field with an icon and a **New** menu. The canvas colour still comes from the
+  notebook's background setting, not the theme.
+- The pen size slider moved into a popover with a live preview.
 - Notebooks are now `.onb` files ("Open Nebo Book") with MIME `application/vnd.opennebo+zip`.
   The package no longer claims MyScript's `application/vnd.myscript.nebo`, and the app's file
   association is `.onb` only (it no longer registers `.nebo`).
@@ -15,6 +22,11 @@ and APIs may change in any release.
   writes the same-named `.onb` beside it and leaves the original untouched; the notebook list hides
   a `.nebo` once its `.onb` exists. Conflict copies are listed for both extensions.
 - The `index.xml` namespace is now Open Nebo's own. Real Nebo compatibility is out of scope.
+
+### Fixed
+- A notebook opened from the library was fitted to a zero-width hidden editor, so it came up at 5% zoom
+  (the minimum) and stayed there. The view now waits until the editor is visible.
+- The colour wheel is no longer drawn solid black while a black colour is selected.
 
 ### Added
 - Insert menu with coordinate grids (10x10 for -5..5, 20x20 for -10..10), blank axes and

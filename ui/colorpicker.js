@@ -83,7 +83,8 @@ const ColorPicker = (() => {
     for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
       const dx = x + 0.5 - R, dy = y + 0.5 - R, d = Math.hypot(dx, dy), i = (y * SIZE + x) * 4;
       if (d > R) continue;
-      const [r, g, b] = hsbToRgb((Math.atan2(dy, dx) * 180) / Math.PI, d / R, st.v);
+      // Drawn dimmed by brightness but never black, so the colours stay visible while a dark colour is selected.
+      const [r, g, b] = hsbToRgb((Math.atan2(dy, dx) * 180) / Math.PI, d / R, 0.5 + 0.5 * st.v);
       img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b;
       img.data[i + 3] = d > R - 1 ? Math.round((R - d) * 255) : 255; // soft edge
     }
@@ -182,7 +183,7 @@ const ColorPicker = (() => {
     };
 
     el("div", "cp-h", pop, "Recent"); recentEl = el("div", "cp-chips", pop);
-    const sv = el("div", null, pop); el("div", "cp-h", sv, "My colours (right-click to remove)"); savedEl = el("div", "cp-chips", sv);
+    const sv = el("div", null, pop); const h = el("div", "cp-h", sv, "My colours"); h.title = "Right-click a saved colour to remove it"; savedEl = el("div", "cp-chips", sv);
     palettesEl = el("div", null, pop);
     for (const p of BUILTIN_PALETTES) {
       el("div", "cp-h", palettesEl, p.name);
@@ -192,6 +193,7 @@ const ColorPicker = (() => {
   }
 
   function place() {
+    if (window.Chrome) return Chrome.placePopover(pop, swatch);
     const r = swatch.getBoundingClientRect();
     pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + "px";
     pop.style.top = Math.min(r.bottom + 6, Math.max(8, innerHeight - pop.offsetHeight - 8)) + "px";
