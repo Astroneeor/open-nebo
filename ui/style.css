@@ -345,3 +345,10 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); }
 #layerPanel .lp-foot { display: flex; gap: 6px; }
 #layerPanel .lp-txt { flex: 1; font-size: 12px; padding: 6px 8px; }
 #layerPanel .lp-note { margin: 0; font-size: 11px; color: var(--fg-3); }
+
+/* export menu (PDF / PNG / SVG) and its options dialog (reuses .pdfdlg) */
+#exportMenuPop { display: flex; flex-direction: column; padding: 5px; min-width: 150px; }
+#exportMenuPop[hidden] { display: none; }
+#exportMenuPop button { justify-content: flex-start; height: 34px; padding: 0 12px; border-radius: 8px; }
+.pdfdlg label.opt.exp { align-items: center; }
+.pdfdlg select { height: 36px; font-size: 14px; color: var(--fg); }

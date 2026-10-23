@@ -210,6 +210,24 @@ fn export_pdf_finish(path: String, state: State<AppState>) -> Res<()> {
     vault::write_atomic(&p, &bytes).map_err(err)
 }
 
+/// Writes raw bytes (request body) to a user-chosen file (PNG/SVG export). The path travels hex-encoded in the
+/// `path-hex` header so any file name survives. Refuses an empty path; never creates parent directories.
+#[tauri::command]
+fn write_file(request: Request<'_>) -> Res<()> {
+    let hex = request.headers().get("path-hex").and_then(|v| v.to_str().ok()).ok_or("missing header path-hex")?;
+    if hex.is_empty() || hex.len() % 2 != 0 || !hex.is_ascii() {
+        return Err("empty or invalid path".into());
+    }
+    let raw: Vec<u8> = (0..hex.len() / 2)
+        .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).map_err(|_| "invalid path".to_string()))
+        .collect::<Result<_, _>>()?;
+    let path = PathBuf::from(String::from_utf8(raw).map_err(|_| "invalid path".to_string())?);
+    if path.as_os_str().is_empty() {
+        return Err("empty path".into());
+    }
+    vault::write_atomic(&path, &raw_body(&request)?).map_err(err)
+}
+
 // ---------- library (home screen) ----------
 
 fn root_of(state: &State<AppState>) -> Res<PathBuf> {
@@ -339,7 +357,7 @@ fn main() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             default_vault, list_vault, open_doc, save_doc, new_doc, write_stignore, watch_vault,
-            read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish,
+            read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish, write_file,
             library_tree, library_list, library_new_folder, library_new_notebook, library_rename, library_move,
             library_duplicate, library_trash, preview_doc, preview_media
         ])

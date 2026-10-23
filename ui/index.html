@@ -43,6 +43,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
       <button id="exportPdf" data-icon="export-pdf" title="Export this notebook as a PDF" type="button"></button>
       <button id="inputBtn" data-icon="settings" title="Input settings: touch, stylus buttons" type="button" aria-haspopup="dialog" aria-expanded="false"></button>
       <button id="shortcutsBtn" data-icon="keyboard" title="Keyboard shortcuts (?)" type="button" aria-haspopup="dialog"></button>
+      <button id="exportMenu" data-icon="chevron-down" title="Export as PDF, PNG or SVG" aria-haspopup="menu" aria-expanded="false" type="button"></button>
     </div>
   </header>
   <div id="banner" hidden></div>
@@ -96,6 +97,8 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="shortcuts.js"></script>
 <script src="chrome.js"></script>
 <script src="penui.js"></script>
+<script src="svgexport.js"></script>
+<script src="exportimg.js"></script>
 <script type="module" src="pdf.js"></script>
 </body>
 </html>
