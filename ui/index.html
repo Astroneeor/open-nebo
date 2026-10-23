@@ -40,6 +40,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
     <div class="grp">
       <button id="importPdf" data-icon="import-pdf" title="Import a PDF into this notebook" type="button"></button>
       <button id="exportPdf" data-icon="export-pdf" title="Export this notebook as a PDF" type="button"></button>
+      <button id="exportMenu" data-icon="chevron-down" title="Export as PDF, PNG or SVG" aria-haspopup="menu" aria-expanded="false" type="button"></button>
     </div>
   </header>
   <div id="banner" hidden></div>
@@ -80,6 +81,8 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="bgpicker.js"></script>
 <script src="library.js"></script>
 <script src="chrome.js"></script>
+<script src="svgexport.js"></script>
+<script src="exportimg.js"></script>
 <script type="module" src="pdf.js"></script>
 </body>
 </html>
