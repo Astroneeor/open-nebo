@@ -48,7 +48,7 @@ function boot() {
 }
 const ids = (l) => Array.from(l, (x) => x.id);
 
-test("strokes undo and redo through the buttons and Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y", () => {
+test("strokes undo and redo through the buttons", () => {
   const a = boot();
   a.pen([[0, 0], [10, 0]]); a.pen([[0, 5], [10, 5]]);
   assert.equal(a.pg().strokes.length, 2);
@@ -56,12 +56,11 @@ test("strokes undo and redo through the buttons and Ctrl+Z / Ctrl+Shift+Z / Ctrl
   assert.equal(a.pg().strokes.length, 1);
   a.click("redo");
   assert.equal(a.pg().strokes.length, 2);
-  a.key("z"); a.key("z");
+  // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y are dispatched by shortcuts.js (which clicks these buttons); see shortcuts.test.js.
+  a.click("undo"); a.click("undo");
   assert.equal(a.pg().strokes.length, 0);
-  a.key("z", { shiftKey: true });
+  a.click("redo");
   assert.equal(a.pg().strokes.length, 1);
-  a.key("y");
-  assert.equal(a.pg().strokes.length, 2);
 });
 
 test("a new stroke after an undo discards the redo stack", () => {
