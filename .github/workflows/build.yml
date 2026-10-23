@@ -93,7 +93,7 @@ jobs:
             echo "No CHANGELOG section for $ver; falling back to generated notes"
             echo "has_notes=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
