@@ -132,7 +132,36 @@ const Chrome = (() => {
     if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paintThemeButtons);
   }
 
+  // ---------- accessibility ----------
+  // aria-pressed mirrors the "on" class that app.js and selection.js toggle, so those scripts need no changes.
+  const TOGGLES = ["pen", "eraser", "selectTool", "smart", "snapGrid", "textTool"];
+  function syncPressed(b) { b.setAttribute("aria-pressed", String(b.classList.contains("on"))); }
+  function wirePressed() {
+    const seen = new WeakSet();
+    const attach = () => {
+      for (const id of TOGGLES) {
+        const b = $(id);
+        if (!b || seen.has(b)) continue;
+        seen.add(b); syncPressed(b);
+        new MutationObserver(() => syncPressed(b)).observe(b, { attributes: true, attributeFilter: ["class"] });
+      }
+    };
+    attach();
+    new MutationObserver(attach).observe($("editor"), { childList: true, subtree: true });
+  }
+  // Escape closes popovers in their own scripts; afterwards focus goes back to the button that opened them.
+  const POP_TRIGGERS = ["widthBtn", "colorBtn", "bgBtn", "insertBtn", "pageMenu"];
+  function wireEscapeFocus() {
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape") return;
+      const open = POP_TRIGGERS.map($).find((b) => b && b.getAttribute("aria-expanded") === "true");
+      if (open) setTimeout(() => { if (open.getAttribute("aria-expanded") !== "true") open.focus(); }, 0);
+    }, true);
+  }
+
   function init() {
+    wirePressed();
+    wireEscapeFocus();
     const palette = layoutPalette();
     decorateDynamic();
     wirePalette(palette);

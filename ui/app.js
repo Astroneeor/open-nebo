@@ -174,12 +174,6 @@ function stepHistory(redo) {
 }
 $("undo").onclick = () => stepHistory(false);
 $("redo").onclick = () => stepHistory(true);
-window.addEventListener("keydown", (ev) => {
-  if (!(ev.ctrlKey || ev.metaKey) || /^(INPUT|TEXTAREA|SELECT)$/.test((ev.target || {}).tagName || "")) return;
-  const k = ev.key.toLowerCase();
-  if (k === "z") { ev.preventDefault(); stepHistory(ev.shiftKey); }
-  else if (k === "y") { ev.preventDefault(); stepHistory(true); }
-});
 $("smart").classList.toggle("on", S.smart);
 $("smart").onclick = () => {
   S.smart = !S.smart; lsSet("smartShapes", S.smart ? "1" : "0");

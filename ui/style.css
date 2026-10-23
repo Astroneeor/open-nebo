@@ -10,8 +10,8 @@
   --surface-2: #f0f0f4;
   --surface-3: #e7e7ed;
   --fg: #1c1c21;
-  --fg-2: #6a6a75;
-  --fg-3: #9a9aa5;
+  --fg-2: #52525c;
+  --fg-3: #62626e;
   --line: #e3e3e9;
   --line-2: #d3d3dc;
   --acc: #3b68f0;
@@ -49,7 +49,7 @@
     --surface-3: #30303a;
     --fg: #ececf2;
     --fg-2: #9c9ca9;
-    --fg-3: #6f6f7c;
+    --fg-3: #9a9aa7;
     --line: #2b2b33;
     --line-2: #3a3a45;
     --acc: #7391ff;
@@ -68,7 +68,7 @@
   --surface-3: #30303a;
   --fg: #ececf2;
   --fg-2: #9c9ca9;
-  --fg-3: #6f6f7c;
+  --fg-3: #9a9aa7;
   --line: #2b2b33;
   --line-2: #3a3a45;
   --acc: #7391ff;
@@ -106,6 +106,10 @@ button:disabled { opacity: .38; cursor: default; }
 button.on { background: var(--acc-soft); color: var(--acc); }
 button.on:hover:not(:disabled) { background: color-mix(in srgb, var(--acc) 20%, transparent); }
 :focus { outline: none; }
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible, .pop :focus-visible, [role="dialog"] :focus-visible {
+  outline: 2px solid var(--acc); outline-offset: 2px; box-shadow: 0 0 0 4px var(--acc-soft);
+}
 :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 button svg.icon, .icon { flex: none; display: block; }
 
@@ -194,7 +198,7 @@ canvas.pannable { cursor: grab; } canvas.panning { cursor: grabbing; }
   animation: pop-in .14s var(--ease);
 }
 @keyframes pop-in { from { opacity: 0; transform: translateY(4px) scale(.97); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } button:active:not(:disabled) { transform: none; } }
 
 .cp-pop, .bg-pop { display: flex; flex-direction: column; gap: 10px; padding: 14px; max-height: calc(100vh - 16px); overflow: auto; }
 .cp-pop { width: 252px; }
@@ -279,3 +283,17 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); }
 .cp-h:has(+ .cp-chips:empty), .cp-chips:empty { display: none; }
 #insertMenu .item.paper button { height: 30px; padding: 0 14px; background: var(--acc); color: var(--acc-fg); font-weight: 600; border-radius: 8px; }
 #insertMenu .item.paper button:hover:not(:disabled) { background: var(--acc); filter: brightness(1.07); }
+
+/* ---- keyboard shortcuts dialog ---- */
+.kbd-dlg { width: min(560px, 94vw); max-height: 86vh; overflow: auto; }
+.kbd-dlg h2 { margin: 0; font-size: 17px; }
+.kbd-hint { margin: 0; color: var(--fg-2); font-size: 13px; }
+.kbd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.kbd-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--r-sm); }
+.kbd-name { flex: 1 1 160px; font-size: 13.5px; }
+.kbd-keys { display: flex; gap: 6px; }
+.kbd-key { min-width: 72px; height: 28px; padding: 0 10px; font: 600 12px ui-monospace, monospace; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; }
+.kbd-key.rec { border-color: var(--acc); color: var(--acc); }
+.kbd-reset { height: 28px; padding: 0 10px; font-size: 12px; color: var(--fg-2); }
+.kbd-warn { flex-basis: 100%; font-size: 12px; color: var(--danger); }
+.kbd-row.conflict { background: color-mix(in srgb, var(--danger) 8%, transparent); }
