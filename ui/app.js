@@ -70,6 +70,7 @@ function render() {
   (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
+  if (S.current && typeof InputUI !== "undefined") InputUI.drawPredicted(ctx, S.current); // display only, never saved
   Selection.overlay(ctx, page());
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;

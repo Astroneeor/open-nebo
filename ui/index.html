@@ -40,6 +40,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
     <div class="grp">
       <button id="importPdf" data-icon="import-pdf" title="Import a PDF into this notebook" type="button"></button>
       <button id="exportPdf" data-icon="export-pdf" title="Export this notebook as a PDF" type="button"></button>
+      <button id="inputBtn" data-icon="settings" title="Input settings: touch, stylus buttons" type="button" aria-haspopup="dialog" aria-expanded="false"></button>
     </div>
   </header>
   <div id="banner" hidden></div>
@@ -70,6 +71,8 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="backgrounds.js"></script>
 <script src="snap.js"></script>
 <script src="shapes.js"></script>
+<script src="input.js"></script>
+<script src="inputui.js"></script> <!-- before selection.js: its capturing pointer handlers must see the tool switch -->
 <script src="selection-geom.js"></script>
 <script src="selection.js"></script> <!-- before app.js: its capturing pointer handlers must win in select mode -->
 <script src="images.js"></script>
