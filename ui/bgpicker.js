@@ -48,12 +48,18 @@
     refresh();
   }
 
+  // Each preset is drawn through a view window onto the infinite canvas: `z` is screen px per world unit and
+  // (cx, cy) the world point at the tile centre. The guides need a wide window so their vanishing lines show.
+  const THUMB_VIEW = { persp1: { z: 0.5, cx: 0, cy: 0 }, persp2: { z: 0.1, cx: 0, cy: 300 }, persp3: { z: 0.1, cx: 0, cy: 600 } };
   function thumb(style) {
+    const W = 112, H = 80; // canvas px; shown at about half that, so it stays sharp on high-dpi screens
     const c = el("canvas", "bg-thumb");
-    c.width = 112; c.height = 80;
+    c.width = W; c.height = H;
     const g = c.getContext("2d");
-    g.scale(2, 2); // draw at zoom 0.5 so the pattern is visible in a 56x40 swatch
-    B.draw(g, style, { x0: 0, y0: 0, x1: 112, y1: 80 }, 0.5);
+    const v = THUMB_VIEW[style.pattern] || { z: 0.5, cx: W, cy: H };
+    const x0 = v.cx - W / 2 / v.z, y0 = v.cy - H / 2 / v.z;
+    g.scale(v.z, v.z); g.translate(-x0, -y0);
+    B.draw(g, style, { x0, y0, x1: x0 + W / v.z, y1: y0 + H / v.z }, v.z);
     return c;
   }
 

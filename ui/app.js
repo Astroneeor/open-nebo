@@ -177,7 +177,8 @@ cv.addEventListener("pointerdown", (ev) => {
 });
 cv.addEventListener("pointermove", (ev) => {
   if (V.move(ev)) return;
-  const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+  const co = ev.getCoalescedEvents ? ev.getCoalescedEvents() : null;
+  const evs = co && co.length ? co : [ev]; // some engines return an empty list: fall back to the event itself
   if (S.erasing) { evs.forEach((e) => eraseAt(pos(e))); return; }
   if (!S.current) return;
   for (const e of evs) S.current.points.push({ ...pos(e), t: Math.round(performance.now() - S.t0), p: e.pressure || 0.5 });
