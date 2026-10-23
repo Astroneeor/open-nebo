@@ -59,12 +59,13 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
   </aside>
   <div id="widthPop" class="pop" hidden role="dialog" aria-label="Pen size">
     <div class="wprev"><span class="wdot big"></span></div>
-    <input id="width" type="range" min="1" max="12" value="2" title="Pen width">
+    <input id="width" type="range" min="1" max="24" value="2" title="Pen width">
     <output id="widthVal">2</output>
   </div>
 </main>
 <script src="icons.js"></script>
 <script src="history.js"></script>
+<script src="pens.js"></script>
 <script src="view.js"></script>
 <script src="pagerange.js"></script>
 <script src="backgrounds.js"></script>
@@ -80,6 +81,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="bgpicker.js"></script>
 <script src="library.js"></script>
 <script src="chrome.js"></script>
+<script src="penui.js"></script>
 <script type="module" src="pdf.js"></script>
 </body>
 </html>

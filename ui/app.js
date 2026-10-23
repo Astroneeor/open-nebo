@@ -49,13 +49,20 @@ function page() { return S.doc.pages[S.page]; }
 
 function drawStroke(s, c = ctx) {
   if (!s.points.length) return;
-  c.strokeStyle = s.color; c.lineCap = "round"; c.lineJoin = "round";
-  const pts = s.points;
-  if (pts.length === 1) { c.fillStyle = s.color; c.beginPath(); c.arc(pts[0].x, pts[0].y, s.width / 2, 0, 7); c.fill(); return; }
-  for (let i = 1; i < pts.length; i++) {
-    c.lineWidth = s.width * (0.4 + 1.2 * ((pts[i].p + pts[i - 1].p) / 2));
+  const st = Pens.style(s), pts = s.points;
+  c.strokeStyle = s.color; c.fillStyle = s.color; c.lineCap = st.cap; c.lineJoin = "round";
+  c.save(); c.globalAlpha = Pens.opacityOf(s);
+  if (pts.length === 1) { c.beginPath(); c.arc(pts[0].x, pts[0].y, s.width / 2, 0, 7); c.fill(); }
+  else if (st.single) { // one translucent path, so overlapping segments do not darken
+    c.lineWidth = s.width; c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+    c.stroke();
+  } else for (let i = 1; i < pts.length; i++) {
+    c.lineWidth = Pens.widthAt(s, (pts[i].p + pts[i - 1].p) / 2);
+    if (st.grain) c.globalAlpha = Pens.opacityOf(s) * (0.55 + 0.45 * ((Math.sin(pts[i].x * 12.9898 + pts[i].y * 78.233) * 43758.5453) % 1 + 1) % 1);
     c.beginPath(); c.moveTo(pts[i - 1].x, pts[i - 1].y); c.lineTo(pts[i].x, pts[i].y); c.stroke();
   }
+  c.restore();
 }
 
 function render() {
@@ -96,10 +103,10 @@ const pos = (ev) => V.toWorld(ev);
 
 function eraseAt(p) {
   const r = 14 / V.zoom, strokes = page().strokes;
-  const keep = strokes.filter((s) => !s.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < r + s.width));
+  const keep = Pens.eraseStrokes(strokes, p, r, S.eraserMode || "stroke", uid) || strokes;
   const objs = page().objects || [];
-  const keepObjs = objs.filter((o) => !(o.type === "shape" && Shapes.hitShape(o, p, r)));
-  if (keep.length !== strokes.length || keepObjs.length !== objs.length) {
+  const keepObjs = S.eraserMode === "highlighter" ? objs : objs.filter((o) => !(o.type === "shape" && Shapes.hitShape(o, p, r)));
+  if (keep !== strokes || keepObjs.length !== objs.length) {
     page().strokes = keep; page().objects = keepObjs; touch(); render();
   }
 }
@@ -130,7 +137,7 @@ cv.addEventListener("pointerdown", (ev) => {
   const p = pos(ev);
   if (S.tool === "eraser") { S.erasing = true; S.eraseTok = History.begin(page()); eraseAt(p); return; }
   S.t0 = performance.now();
-  S.current = { id: uid(), color: $("color").value, width: +$("width").value,
+  S.current = { id: uid(), color: $("color").value, width: +$("width").value, ...Pens.newFields(S.penKind),
                 points: [{ ...p, t: 0, p: ev.pressure || 0.5 }] };
   S.holdOrigin = p; cancelHold(); if (S.smart) armHold();
   render();

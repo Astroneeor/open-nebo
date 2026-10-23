@@ -24,7 +24,7 @@ function boot() {
     document: { getElementById: getEl, createElement: mkEl },
     V: { zoom: 1, x: 0, y: 0, sync() {}, begin() {}, end() {}, toWorld: (ev) => ({ x: ev.x, y: ev.y }), down: () => false, move: () => false, up: () => false,
          init() {}, zoomBy() {}, reset() {} },
-    Images: { draw() {} }, Selection: { overlay() {} },
+    Pens: require("./pens.js"), Images: { draw() {} }, Selection: { overlay() {} },
     Shapes: { HOLD_MS: 500, HOLD_RADIUS: 4, recognize: (pts) => (pts.length === 3 ? { kind: "line", points: [[0, 0], [10, 10]] } : null), drawShape() {}, hitShape: (o, p) => o.id === "hit" },
   };
   sandbox.window = { __TAURI__: { core: { invoke: async (cmd) => (cmd === "list_vault" ? [] : cmd === "default_vault" ? "/v" : undefined) },
