@@ -9,7 +9,7 @@ description = "Reader/writer for MyScript Nebo (.nebo) style iink packages, with
 zip = { version = "2", default-features = false, features = ["deflate"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "1"
+thiserror = "2"
 quick-xml = "0.36"
 sha2 = "0.10"
 base64 = "0.22"
