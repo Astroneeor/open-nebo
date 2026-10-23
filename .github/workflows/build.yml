@@ -6,16 +6,37 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+      - run: cargo clippy -p nebo-core -- -D warnings
       - run: cargo test -p nebo-core
 
+  test-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test
+        working-directory: ui
+
   bundle:
-    needs: test-core
+    needs: [test-core, test-ui]
     strategy:
       fail-fast: false
       matrix:
@@ -28,7 +49,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev rpm
       - uses: swatinem/rust-cache@v2
       - run: cargo install tauri-cli --version "^2" --locked
       - run: cargo tauri build
@@ -36,6 +57,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: open-nebo-${{ matrix.os }}
+          if-no-files-found: error
           path: |
             target/release/bundle/**/*.msi
             target/release/bundle/**/*.exe
@@ -51,16 +73,38 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Tag must match app version
+      - name: Tag must match app versions
         run: |
           v=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          t=$(python3 -c 'import json;print(json.load(open("src-tauri/tauri.conf.json"))["version"])')
           [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != Cargo version v$v"; exit 1; }
+          [ "v$t" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != tauri.conf.json version v$t"; exit 1; }
+      - name: Release notes from CHANGELOG
+        id: notes
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v v="$ver" '
+            /^## \[/ { if (found) exit; if (index($0, "## [" v "]") == 1) { found=1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if grep -q '[^[:space:]]' release-notes.md; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No CHANGELOG section for $ver; falling back to generated notes"
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: |
+          find . -type f ! -name SHA256SUMS.txt -printf '%P\n' | sort | xargs sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/**/*
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'release-notes.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}

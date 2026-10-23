@@ -3,18 +3,73 @@
   "productName": "Open Nebo",
   "version": "0.1.1",
   "identifier": "org.opennebo.app",
-  "build": { "frontendDist": "../ui" },
+  "build": {
+    "frontendDist": "../ui"
+  },
   "app": {
     "withGlobalTauri": true,
-    "windows": [{ "title": "Open Nebo", "width": 1200, "height": 800, "dragDropEnabled": false }],
-    "security": { "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:" }
+    "windows": [
+      {
+        "title": "Open Nebo",
+        "width": 1200,
+        "height": 800,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:"
+    }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "targets": [
+      "nsis",
+      "msi",
+      "deb",
+      "appimage",
+      "rpm"
+    ],
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
     "fileAssociations": [
-      { "ext": ["onb"], "mimeType": "application/vnd.opennebo+zip", "name": "Open Nebo notebook" }
-    ]
+      {
+        "ext": [
+          "onb"
+        ],
+        "mimeType": "application/vnd.opennebo+zip",
+        "name": "Open Nebo notebook"
+      }
+    ],
+    "publisher": "Open Nebo contributors",
+    "shortDescription": "Open-source handwriting notebook app",
+    "longDescription": "Open Nebo is an open-source notebook app for handwriting, drawing and typed text, stored in the open .onb format.",
+    "category": "Productivity",
+    "copyright": "Copyright (c) Open Nebo contributors",
+    "license": "MIT",
+    "homepage": "https://github.com/Astroneeor/open-nebo",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English"
+        ]
+      },
+      "wix": {
+        "language": "en-US"
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "graphics"
+      },
+      "rpm": {
+        "release": "1"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   }
 }
