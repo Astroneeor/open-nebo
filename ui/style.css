@@ -198,7 +198,8 @@ canvas.pannable { cursor: grab; } canvas.panning { cursor: grabbing; }
 
 .cp-pop, .bg-pop { display: flex; flex-direction: column; gap: 10px; padding: 14px; max-height: calc(100vh - 16px); overflow: auto; }
 .cp-pop { width: 252px; }
-.bg-pop { width: 264px; }
+.bg-pop { width: 264px; gap: 6px; }
+.bg-pop .bg-h:first-child { margin-top: 0; }
 .cp-pop[hidden], .bg-pop[hidden] { display: none; }
 .cp-h, .bg-h { margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
 

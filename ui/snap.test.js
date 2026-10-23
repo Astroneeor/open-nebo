@@ -5,7 +5,9 @@ const assert = require("node:assert/strict");
 const B = require("./backgrounds.js");
 const Snap = require("./snap.js");
 
-test("step: only grid and dot have a lattice", () => {
+test("step: only the square lattices (grid, dot, triangle) snap", () => {
+  assert.equal(Snap.step({ pattern: "triangle", color: "#ffffff" }, 1), 40);
+  for (const p of ["isometric", "persp1", "persp2", "persp3"]) assert.equal(Snap.step({ pattern: p, color: "#ffffff" }, 1), 0, p);
   assert.equal(Snap.step({ pattern: "grid", color: "#ffffff" }, 1), 40);
   assert.equal(Snap.step({ pattern: "dot", color: "#ffffff" }, 1), 40);
   assert.equal(Snap.step({ pattern: "paper", color: "#ffffff" }, 1), 0);

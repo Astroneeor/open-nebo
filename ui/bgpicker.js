@@ -1,6 +1,5 @@
 "use strict";
-// Background picker: a toolbar button that opens a popover of fixed presets (light/dark plain, paper, dot grid,
-// grid, blueprint) and an "Apply to all pages" switch. No colour or pattern settings. Changes apply live.
+// Background picker: a toolbar button that opens a popover of fixed presets (plain, paper, grids and perspective guides, grouped under headings) and an "Apply to all pages" switch. No colour or pattern settings. Changes apply live.
 // Switching between a light and a dark background also swaps automatic ink (see Backgrounds.autoInk).
 (() => {
   const A = window.__app, B = window.Backgrounds, $ = (id) => document.getElementById(id);
@@ -67,8 +66,9 @@
 
   function build() {
     pop = el("div", "bg-pop", document.body); pop.id = "bgPop"; pop.hidden = true;
-    const grid = el("div", "bg-presets", pop);
+    let grid = null, group = null;
     for (const p of B.PRESETS) {
+      if (p.group !== group) { group = p.group; el("div", "bg-h", pop, group); grid = el("div", "bg-presets", pop); }
       const b = el("button", "bg-preset", grid); b.type = "button"; b.title = p.name;
       b.append(thumb(p)); el("span", null, b, p.name);
       b.onclick = () => apply(p);
