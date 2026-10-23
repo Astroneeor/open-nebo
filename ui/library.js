@@ -31,6 +31,8 @@ const Library = (() => {
     expanded: new Set(JSON.parse(lsGet("libExpanded") || "[]")),
     drag: null,           // path being dragged
     seq: 0,               // guards against out-of-order refreshes
+    fts: null,            // { query, hits } full-text results for the current query
+    ftsSeq: 0,
     thumbs: new Map(),    // "path|modified" -> Promise<{ url, pages, kind } | null>
   };
 
@@ -372,6 +374,8 @@ const Library = (() => {
       const hits = entries.filter((e) => stem(e.name).toLowerCase().includes(q));
       if (!hits.length) body.append(el("p", { className: "lib-empty", textContent: `No notebooks match "${L.query.trim()}".` }));
       else body.append(section(`Results (${hits.length})`, hits.map((e) => notebookCard(e, { showPath: true }))));
+      body.append(el("div", { id: "libFts" }));
+      showFts();
       return;
     }
     const recent = entries.filter((e) => !e.is_conflict).sort((a, b) => b.modified - a.modified).slice(0, RECENT_COUNT);
@@ -386,6 +390,34 @@ const Library = (() => {
         el("p", { className: "lib-hint", textContent: "Create a notebook or canvas, or import a PDF, to get started." })));
     }
   }
+
+  // ---------- full-text search ("In notebooks") ----------
+  const openHit = (hit) => guard(async () => {
+    await A.openPath(hit.path);
+    const n = (A.S.doc && A.S.doc.pages.length) || 1;
+    A.S.page = Math.max(0, Math.min(hit.page_index, n - 1));
+    A.render();
+  });
+
+  function showFts() {
+    const host = byId("libFts");
+    if (!host) return;
+    host.replaceChildren();
+    const q = L.query.trim();
+    if (!q || !L.fts || L.fts.query !== q || !L.fts.hits.length) return;
+    host.append(SearchUI.section(L.fts.hits, q, openHit));
+  }
+
+  const runFts = SearchUI.debounce(async () => {
+    const q = L.query.trim(), seq = ++L.ftsSeq;
+    if (!q || !A.S.vault) { L.fts = null; showFts(); return; }
+    try {
+      const hits = await call("search_vault", { dir: A.S.vault, query: q });
+      if (seq !== L.ftsSeq) return;
+      L.fts = { query: q, hits };
+    } catch (_) { if (seq !== L.ftsSeq) return; L.fts = null; }
+    showFts();
+  }, SearchUI.DEBOUNCE_MS);
 
   function renderCrumbs() {
     const nav = byId("libCrumbs");
@@ -490,7 +522,7 @@ const Library = (() => {
       el("div", { className: "lib-main" },
         el("header", { className: "lib-bar" },
           el("nav", { id: "libCrumbs", className: "lib-crumbs", attrs: { "aria-label": "Path" } }),
-          el("input", { id: "libSearch", type: "search", className: "lib-search", placeholder: "Search notebooks", attrs: { "aria-label": "Search notebooks" } }),
+          el("input", { id: "libSearch", type: "search", className: "lib-search", placeholder: "Search notebooks and text", attrs: { "aria-label": "Search notebooks and typed text" } }),
           el("div", { className: "lib-actions" },
             actionBtn("new-menu", "plus", "New", true),
             actionBtn("import-pdf", "file-import", "Import PDF"))),
@@ -514,8 +546,8 @@ const Library = (() => {
     root.querySelector(".lib-actions").addEventListener("click", (ev) => {
       const b = ev.target.closest("button[data-act]"); if (b) act[b.dataset.act](b);
     });
-    byId("libSearch").addEventListener("input", (ev) => { L.query = ev.target.value; renderBody(); });
-    byId("libSearch").addEventListener("keydown", (ev) => { if (ev.key === "Escape") { ev.target.value = ""; L.query = ""; renderBody(); } });
+    byId("libSearch").addEventListener("input", (ev) => { L.query = ev.target.value; renderBody(); runFts(); });
+    byId("libSearch").addEventListener("keydown", (ev) => { if (ev.key === "Escape") { ev.target.value = ""; L.query = ""; L.fts = null; runFts.cancel(); L.ftsSeq++; renderBody(); } });
     byId("libPick").onclick = () => guard(async () => {
       const d = await tauri.dialog.open({ directory: true });
       if (d) { L.dir = d; await A.setVault(d); }

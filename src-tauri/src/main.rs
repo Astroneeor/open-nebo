@@ -254,6 +254,12 @@ fn library_list(dir: String, state: State<AppState>) -> Res<library::Listing> {
 }
 
 #[tauri::command]
+fn search_vault(dir: String, query: String, state: State<AppState>) -> Res<Vec<nebo_core::search::Hit>> {
+    let dir = library::resolve(&root_of(&state)?, Path::new(&dir)).map_err(err)?;
+    nebo_core::search::search(&dir, &query, 200).map_err(err)
+}
+
+#[tauri::command]
 fn library_new_folder(parent: String, name: String, state: State<AppState>) -> Res<String> {
     library::create_folder(&root_of(&state)?, Path::new(&parent), &name).map(path_str).map_err(err)
 }
@@ -359,7 +365,7 @@ fn main() {
             default_vault, list_vault, open_doc, save_doc, new_doc, write_stignore, watch_vault,
             read_pdf, begin_pdf_import, put_media, read_media, export_pdf_begin, export_pdf_page, export_pdf_finish, write_file,
             library_tree, library_list, library_new_folder, library_new_notebook, library_rename, library_move,
-            library_duplicate, library_trash, preview_doc, preview_media
+            library_duplicate, library_trash, preview_doc, preview_media, search_vault
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Nebo");

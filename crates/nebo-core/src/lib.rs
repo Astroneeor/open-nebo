@@ -2,6 +2,7 @@ pub mod library;
 pub mod model;
 pub mod package;
 pub mod pdf;
+pub mod search;
 pub mod vault;
 
 pub use model::{BackgroundStyle, DocKind, Document, GraphObject, ImageObject, Page, PageObject, Point, Shape, ShapeKind, Stroke, View};
