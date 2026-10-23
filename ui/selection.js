@@ -24,7 +24,7 @@ const Selection = (() => {
   const live = () => {
     if (!S.doc || pageId !== page().id) return [];
     const pg = page();
-    return items.filter((it) => lookup(pg, it));
+    return items.filter((it) => { const o = lookup(pg, it); return o && Layers.editable(pg, o); });
   };
   const objOf = (it) => lookup(page(), it);
   const same = (a, b) => a.kind === b.kind && a.id === b.id;
@@ -55,10 +55,11 @@ const Selection = (() => {
 
   // ---------- hit testing ----------
   function hitItem(p) {
-    const pg = page(), tol = (k) => Math.max(k, 8 / V.zoom), list = objs(pg);
+    const pg = page(), tol = (k) => Math.max(k, 8 / V.zoom), list = objs(pg).filter((o) => Layers.editable(pg, o));
     for (let i = list.length - 1; i >= 0; i--) if (list[i].type === "shape" && Geom.nearShape(list[i], p, tol(0))) return { kind: "shape", id: list[i].id };
     for (let i = pg.strokes.length - 1; i >= 0; i--) {
       const s = pg.strokes[i];
+      if (!Layers.editable(pg, s)) continue;
       if (Geom.nearPolyline(p, s.points, tol((s.width || 2) * 0.8))) return { kind: "stroke", id: s.id };
     }
     for (const kind of ["graph", "image"]) {
@@ -85,8 +86,9 @@ const Selection = (() => {
       return render();
     }
     const pg = page(), found = [];
-    for (const s of pg.strokes) if (Geom.fractionInside(s.points, pts) >= 0.5) found.push({ kind: "stroke", id: s.id });
+    for (const s of pg.strokes) if (Layers.editable(pg, s) && Geom.fractionInside(s.points, pts) >= 0.5) found.push({ kind: "stroke", id: s.id });
     for (const o of objs(pg)) {
+      if (!Layers.editable(pg, o)) continue;
       let hit = false;
       if (o.type === "shape") hit = Geom.fractionInside(Geom.shapeSamples(o), pts) >= 0.5;
       else if (o.type === "graph") hit = Geom.boxInsidePolygon(Geom.objectBox(o), pts); // only when fully enclosed
@@ -248,6 +250,16 @@ const Selection = (() => {
     touch(); render();
   }
 
+  // Moves the selection onto the active layer (base when none is active).
+  function toActiveLayer() {
+    const cur = live();
+    if (!cur.length) return;
+    const pg = page(), id = Layers.active(pg);
+    History.record(pg, "move to layer", () => Layers.moveItems(pg, cur.map(objOf), id));
+    touch(); render();
+    if (window.__app.hooks.layersChanged) window.__app.hooks.layersChanged();
+  }
+
   const loadImage = (o) => new Promise((res, rej) => {
     const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("image not readable")); i.src = `data:${o.mime};base64,${o.data}`;
   });
@@ -293,7 +305,7 @@ const Selection = (() => {
   function selectAll() {
     if (!S.doc) return;
     const pg = page();
-    setSel([...pg.strokes.map((s) => ({ kind: "stroke", id: s.id })), ...objs(pg).map((o) => ({ kind: o.type, id: o.id }))]);
+    setSel([...pg.strokes.filter((s) => Layers.editable(pg, s)).map((s) => ({ kind: "stroke", id: s.id })), ...objs(pg).filter((o) => Layers.editable(pg, o)).map((o) => ({ kind: o.type, id: o.id }))]);
     render();
   }
 
@@ -303,7 +315,7 @@ const Selection = (() => {
   // ---------- floating menu ----------
   const BUTTONS = [
     ["cut", "Cut", cut], ["copy", "Copy", copy], ["paste", "Paste", paste], ["dup", "Duplicate", duplicate], ["del", "Delete", del],
-    ["front", "To front", () => reorder(true)], ["back", "To back", () => reorder(false)],
+    ["layer", "To active layer", toActiveLayer], ["front", "To front", () => reorder(true)], ["back", "To back", () => reorder(false)],
     ["fliph", "Flip H", () => flip("h")], ["flipv", "Flip V", () => flip("v")],
   ];
   function buildMenu() {

@@ -71,10 +71,12 @@ function render() {
   if (!S.doc) return;
   V.begin(ctx);
   window.__app?.hooks.bg?.(ctx, page());
-  Images.draw(ctx, page());
-  if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
-  page().strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
-  (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
+  for (const v of Layers.drawOrder(page())) { // base layer first, then each visible layer bottom to top
+    Images.draw(ctx, v);
+    if (typeof Graphs !== "undefined") Graphs.draw(ctx, v);
+    v.strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
+    v.objects.forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
+  }
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
   if (S.current && typeof InputUI !== "undefined") InputUI.drawPredicted(ctx, S.current); // display only, never saved
@@ -105,9 +107,10 @@ const pos = (ev) => V.toWorld(ev);
 
 function eraseAt(p) {
   const r = 14 / V.zoom, strokes = page().strokes;
-  const keep = Pens.eraseStrokes(strokes, p, r, S.eraserMode || "stroke", uid) || strokes;
+  const pg = page(), ed = (it) => Layers.editable(pg, it);
+  const keep = Pens.eraseStrokes(strokes, p, r, S.eraserMode || "stroke", uid, ed) || strokes;
   const objs = page().objects || [];
-  const keepObjs = S.eraserMode === "highlighter" ? objs : objs.filter((o) => !(o.type === "shape" && Shapes.hitShape(o, p, r)));
+  const keepObjs = S.eraserMode === "highlighter" ? objs : objs.filter((o) => !(o.type === "shape" && ed(o) && Shapes.hitShape(o, p, r)));
   if (keep !== strokes || keepObjs.length !== objs.length) {
     page().strokes = keep; page().objects = keepObjs; touch(); render();
   }
@@ -137,6 +140,7 @@ cv.addEventListener("pointerdown", (ev) => {
   if (V.down(ev)) { S.current = null; S.erasing = false; render(); return; }
   cv.setPointerCapture(ev.pointerId);
   const p = pos(ev);
+  if (S.tool !== "eraser" && !Layers.canDraw(page(), Layers.active(page()))) { status("The active layer is hidden or locked"); return; }
   if (S.tool === "eraser") { S.erasing = true; S.eraseTok = History.begin(page()); eraseAt(p); return; }
   S.t0 = performance.now();
   S.current = { id: uid(), color: $("color").value, width: +$("width").value, ...Pens.newFields(S.penKind),
@@ -167,7 +171,7 @@ const end = (ev) => {
   cancelHold(); S.current = null;
   const pg = page();
   History.record(pg, shape ? "shape" : "stroke", () => {
-    if (shape) (pg.objects || (pg.objects = [])).push(shape); else pg.strokes.push(s);
+    if (shape) (pg.objects || (pg.objects = [])).push(Layers.stamp(pg, shape)); else pg.strokes.push(Layers.stamp(pg, s));
   });
   touch(); render();
 };

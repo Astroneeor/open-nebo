@@ -68,3 +68,14 @@ test("eraseStrokes: stroke mode removes whole stroke; point mode splits; highlig
   assert.equal(split.length, 4);
   assert.equal(Pens.eraseStrokes([pen], { x: 500, y: 500 }, 4, "point", id), null);
 });
+
+test("eraseStrokes leaves strokes the editable predicate rejects (locked/hidden layers)", () => {
+  const mk = (id) => ({ id, color: "#000", width: 2, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] });
+  const strokes = [mk("a"), mk("b")];
+  for (const mode of ["stroke", "point", "highlighter"]) {
+    const out = Pens.eraseStrokes(strokes, { x: 5, y: 0 }, 6, mode, (() => { let n = 0; return () => "n" + n++; })(), (s) => s.id !== "b");
+    if (out) assert.ok(out.some((s) => s.id === "b"), mode + ": locked stroke survives");
+  }
+  const all = Pens.eraseStrokes(strokes, { x: 5, y: 0 }, 6, "stroke", () => "x", () => false);
+  assert.strictEqual(all, null);
+});

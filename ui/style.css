@@ -328,3 +328,20 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); }
 .kbd-reset { height: 28px; padding: 0 10px; font-size: 12px; color: var(--fg-2); }
 .kbd-warn { flex-basis: 100%; font-size: 12px; color: var(--danger); }
 .kbd-row.conflict { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+/* ---------- layers panel ---------- */
+#layerPanel { width: 296px; padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 16px); overflow: auto; }
+#layerPanel .lp-head { display: flex; align-items: center; padding: 0 2px; }
+#layerPanel .lp-list { display: flex; flex-direction: column; gap: 2px; }
+#layerPanel .lp-row { display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: var(--r-sm, 8px); cursor: pointer; }
+#layerPanel .lp-row:hover { background: var(--line); }
+#layerPanel .lp-row.active { background: var(--acc); color: var(--acc-fg); }
+#layerPanel .lp-row.dim .lp-label { opacity: .5; }
+#layerPanel .lp-label, #layerPanel .lp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; font-size: 13px; }
+#layerPanel .lp-name { font: inherit; font-size: 13px; color: var(--fg); background: var(--surface); border: 1px solid var(--acc); border-radius: 6px; }
+#layerPanel .lp-btn { width: 26px; height: 26px; min-width: 26px; padding: 0; border-radius: 8px; color: inherit; background: transparent; }
+#layerPanel .lp-btn:disabled { opacity: .3; }
+#layerPanel .lp-btn svg { width: 16px; height: 16px; }
+#layerPanel .lp-foot { display: flex; gap: 6px; }
+#layerPanel .lp-txt { flex: 1; font-size: 12px; padding: 6px 8px; }
+#layerPanel .lp-note { margin: 0; font-size: 11px; color: var(--fg-3); }

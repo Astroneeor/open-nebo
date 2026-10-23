@@ -59,9 +59,10 @@
    * Apply an eraser at world point `p`, radius `r` to a stroke list. mode: stroke | point | highlighter.
    * Returns a new list, or null when nothing changed.
    */
-  function eraseStrokes(strokes, p, r, mode, newId) {
+  function eraseStrokes(strokes, p, r, mode, newId, editable) {
     const out = []; let changed = false;
     for (const s of strokes) {
+      if (editable && !editable(s)) { out.push(s); continue; } // hidden/locked layers are untouchable
       if (mode === "point") {
         const parts = splitStroke(s, p, r, newId);
         if (parts) { changed = true; out.push(...parts); } else out.push(s);

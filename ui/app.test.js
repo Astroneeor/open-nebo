@@ -32,6 +32,7 @@ function boot() {
                      addEventListener(t, f) { (listeners.win[t] ||= []).push(f); } };
   const ctx = vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "history.js"), "utf8").replace("const History", "var History"), ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "layers.js"), "utf8").replace("const Layers", "var Layers"), ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "app.js"), "utf8").replace(/^const /gm, "var ").replace(/^function /gm, "function "), ctx);
   vm.runInContext("S.doc = null;", ctx);
   const run = (code) => vm.runInContext(code, ctx);

@@ -32,6 +32,7 @@ function setup() {
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, "selection-geom.js"), "utf8").replace("const Geom", "var Geom"), ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "history.js"), "utf8").replace("const History", "var History"), ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "layers.js"), "utf8").replace("const Layers", "var Layers"), ctx);
   const History = vm.runInContext("History", ctx);
   History.bind((id) => (id === pg.id ? pg : null));
   const Selection = vm.runInContext(fs.readFileSync(path.join(__dirname, "selection.js"), "utf8") + "\nSelection;", ctx);
