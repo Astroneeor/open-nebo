@@ -152,3 +152,26 @@ test("reset forgets everything", () => {
   assert.equal(History.canUndo(), false);
   assert.equal(History.canRedo(), false);
 });
+
+test("layer list edits are undoable, including item reassignment", () => {
+  const { pg } = fresh();
+  pg.layers = [{ id: "L1", name: "One", visible: true, locked: false }];
+  History.record(pg, "stroke", () => pg.strokes.push({ ...stroke("a"), layer: "L1" }));
+  History.record(pg, "delete layer", () => { pg.layers.splice(0, 1); delete pg.strokes[0].layer; });
+  assert.deepEqual(pg.layers, []);
+  assert.ok(History.undo());
+  assert.equal(pg.layers.length, 1);
+  assert.equal(pg.strokes[0].layer, "L1");
+  History.record(pg, "rename", () => { pg.layers[0].name = "Two"; });
+  assert.ok(History.undo());
+  assert.equal(pg.layers[0].name, "One");
+  assert.ok(History.redo());
+  assert.equal(pg.layers[0].name, "Two");
+});
+
+test("undo on a page without layers does not invent a layers array", () => {
+  const { pg } = fresh();
+  History.record(pg, "stroke", () => pg.strokes.push(stroke("a")));
+  History.undo();
+  assert.equal(pg.layers, undefined);
+});

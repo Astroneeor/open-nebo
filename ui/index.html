@@ -50,6 +50,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
     <button id="eraser" data-icon="eraser" title="Eraser" type="button"></button>
     <button id="smart" data-icon="shapes" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)" type="button"></button>
     <button id="snapGrid" data-icon="magnet" title="Snap to grid (works on grid and dot backgrounds)" type="button"></button>
+    <button id="layersBtn" data-icon="layers" title="Layers" type="button" aria-haspopup="dialog" aria-expanded="false"></button>
     <span class="rule" role="separator"></span>
     <input id="color" type="hidden" value="#000000">
     <button id="colorBtn" class="colorbtn" type="button" title="Pen colour" aria-haspopup="dialog" aria-expanded="false"></button>
@@ -65,6 +66,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 </main>
 <script src="icons.js"></script>
 <script src="history.js"></script>
+<script src="layers.js"></script>
 <script src="view.js"></script>
 <script src="pagerange.js"></script>
 <script src="backgrounds.js"></script>
@@ -76,6 +78,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="colorpicker.js"></script>
 <script src="app.js"></script>
 <script src="graphs.js"></script>
+<script src="layerpanel.js"></script>
 <script src="pages.js"></script>
 <script src="bgpicker.js"></script>
 <script src="library.js"></script>

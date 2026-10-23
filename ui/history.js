@@ -1,6 +1,6 @@
 "use strict";
 // One undo/redo history for everything on a page (strokes, shapes, images, graphs, selection edits, erasing).
-// An entry is a before/after snapshot of a page's `strokes` and `objects` arrays. Snapshots copy each item one
+// An entry is a before/after snapshot of a page's `strokes`, `objects` and `layers` arrays. Snapshots copy each item one
 // level deep (`{ ...item }`), so in-place field edits are captured; array fields (stroke points, shape points) are
 // shared, so code must REPLACE those arrays rather than mutate them (selection.js and shapes.js already do).
 // No DOM: loadable from node for tests. Needs bind() to find pages by id.
@@ -10,7 +10,7 @@ const History = (() => {
   let pageById = () => null, onSwitch = () => {}, now = () => Date.now();
 
   const copy = (list) => (list || []).map((x) => ({ ...x }));
-  const snap = (pg) => ({ strokes: copy(pg.strokes), objects: copy(pg.objects) });
+  const snap = (pg) => ({ strokes: copy(pg.strokes), objects: copy(pg.objects), layers: copy(pg.layers) });
 
   function sameItem(a, b) {
     const ka = Object.keys(a), kb = Object.keys(b);
@@ -19,9 +19,11 @@ const History = (() => {
     return true;
   }
   const sameList = (a, b) => a.length === b.length && a.every((x, i) => sameItem(x, b[i]));
-  const same = (a, b) => sameList(a.strokes, b.strokes) && sameList(a.objects, b.objects);
+  const same = (a, b) => sameList(a.strokes, b.strokes) && sameList(a.objects, b.objects) && sameList(a.layers || [], b.layers || []);
 
-  function restore(pg, s) { pg.strokes = copy(s.strokes); pg.objects = copy(s.objects); }
+  function restore(pg, s) {
+    pg.strokes = copy(s.strokes); pg.objects = copy(s.objects);
+    if (s.layers.length || pg.layers) pg.layers = copy(s.layers); }
 
   function push(entry) {
     undoS.push(entry);

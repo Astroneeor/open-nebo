@@ -228,14 +228,16 @@ async function paintPage(pg, canvas) {
     try { c.drawImage(await loadImage(await mediaUrl(S.path, pg.background)), 0, 0, pg.width, pg.height); }
     catch (_) { /* missing media: export the rest alone */ }
   }
-  for (const o of pg.objects || []) {
-    if (o.type !== "image") continue;
-    try { c.drawImage(await loadImage(`data:${o.mime};base64,${o.data}`), o.x, o.y, o.w, o.h); }
-    catch (_) { /* undecodable image: skip it */ }
+  for (const v of Layers.drawOrder(pg)) { // hidden layers are left out
+    for (const o of v.objects) {
+      if (o.type !== "image") continue;
+      try { c.drawImage(await loadImage(`data:${o.mime};base64,${o.data}`), o.x, o.y, o.w, o.h); }
+      catch (_) { /* undecodable image: skip it */ }
+    }
+    if (typeof Graphs !== "undefined") Graphs.draw(c, v);
+    v.strokes.forEach((s) => A.drawStroke(s, c));
+    for (const o of v.objects) if (o.type === "shape") Shapes.drawShape(c, o);
   }
-  if (typeof Graphs !== "undefined") Graphs.draw(c, pg);
-  pg.strokes.forEach((s) => A.drawStroke(s, c));
-  for (const o of pg.objects || []) if (o.type === "shape") Shapes.drawShape(c, o);
 }
 
 $$("exportPdf").onclick = async () => {
