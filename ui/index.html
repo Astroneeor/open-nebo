@@ -48,6 +48,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
   <aside id="palette" class="palette" aria-label="Tools">
     <button id="pen" class="on" data-icon="pen" title="Pen" type="button"></button>
     <button id="eraser" data-icon="eraser" title="Eraser" type="button"></button>
+    <button id="textTool" data-icon="type" title="Text: click the page and type" type="button"></button>
     <button id="smart" data-icon="shapes" title="Smart shapes: snap lines, arrows, circles, rectangles and triangles (or hold the pen still at the end of a stroke)" type="button"></button>
     <button id="snapGrid" data-icon="magnet" title="Snap to grid (works on grid and dot backgrounds)" type="button"></button>
     <span class="rule" role="separator"></span>
@@ -70,8 +71,10 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="backgrounds.js"></script>
 <script src="snap.js"></script>
 <script src="shapes.js"></script>
+<script src="textlayout.js"></script>
 <script src="selection-geom.js"></script>
 <script src="selection.js"></script> <!-- before app.js: its capturing pointer handlers must win in select mode -->
+<script src="text.js"></script>
 <script src="images.js"></script>
 <script src="colorpicker.js"></script>
 <script src="app.js"></script>

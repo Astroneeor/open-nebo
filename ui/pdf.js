@@ -206,6 +206,7 @@ function exportBounds(pg) {
   for (const o of pg.objects || []) {
     if (o.type === "image") { add(o.x, o.y); add(o.x + o.w, o.y + o.h); }
     else if (o.type === "graph") { add(o.x, o.y); add(o.x + o.size, o.y + o.size * (o.ymax - o.ymin) / (o.xmax - o.xmin)); }
+    else if (o.type === "text") { const b = Geom.objectBox(o); add(b.x, b.y); add(b.x + b.w, b.y + b.h); }
     else if (o.type === "shape") {
       if (o.kind === "ellipse") { const [[cx, cy], [rx, ry]] = o.points; add(cx - rx, cy - ry); add(cx + rx, cy + ry); }
       else for (const [x, y] of o.points) add(x, y);
@@ -235,7 +236,7 @@ async function paintPage(pg, canvas) {
   }
   if (typeof Graphs !== "undefined") Graphs.draw(c, pg);
   pg.strokes.forEach((s) => A.drawStroke(s, c));
-  for (const o of pg.objects || []) if (o.type === "shape") Shapes.drawShape(c, o);
+  for (const o of pg.objects || []) { if (o.type === "shape") Shapes.drawShape(c, o); else if (o.type === "text") Text.draw(c, o); }
 }
 
 $$("exportPdf").onclick = async () => {

@@ -2,7 +2,7 @@
 // Select tool: lasso / marquee / click selection of strokes, images, graphs and shapes, a bounding box with
 // corner handles, move / scale, and a floating menu above the selection. World coordinates throughout.
 //
-// Items are { kind: "stroke" | "image" | "graph" | "shape", id }. Strokes live in page().strokes, the rest in
+// Items are { kind: "stroke" | "image" | "graph" | "shape" | "text", id }. Strokes live in page().strokes, the rest in
 // page().objects (their `type`). Everything stays a vector/object of its own kind; nothing is rasterised
 // except Flip on images (the file format has no flip flag).
 // Draw order is images, graphs, strokes, shapes, so "front/back" reorders within each list.
@@ -61,7 +61,7 @@ const Selection = (() => {
       const s = pg.strokes[i];
       if (Geom.nearPolyline(p, s.points, tol((s.width || 2) * 0.8))) return { kind: "stroke", id: s.id };
     }
-    for (const kind of ["graph", "image"]) {
+    for (const kind of ["text", "graph", "image"]) {
       for (let i = list.length - 1; i >= 0; i--) if (list[i].type === kind && Geom.inBox(p, Geom.objectBox(list[i]))) return { kind, id: list[i].id };
     }
     return null;
@@ -90,7 +90,7 @@ const Selection = (() => {
       let hit = false;
       if (o.type === "shape") hit = Geom.fractionInside(Geom.shapeSamples(o), pts) >= 0.5;
       else if (o.type === "graph") hit = Geom.boxInsidePolygon(Geom.objectBox(o), pts); // only when fully enclosed
-      else if (o.type === "image") hit = Geom.pointInPolygon(Geom.boxCenter(o), pts);
+      else if (o.type === "image" || o.type === "text") hit = Geom.pointInPolygon(Geom.boxCenter(o), pts);
       if (hit) found.push({ kind: o.type, id: o.id });
     }
     setSel([...base, ...found.filter((f) => !base.some((b) => same(b, f)))]);
@@ -281,7 +281,7 @@ const Selection = (() => {
     finally { busy = false; }
   }
 
-  const colourable = (c) => c.kind === "stroke" || c.kind === "shape";
+  const colourable = (c) => c.kind === "stroke" || c.kind === "shape" || c.kind === "text";
   function recolor(color) {
     const cur = live().filter(colourable);
     if (!cur.length) return;

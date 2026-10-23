@@ -135,3 +135,16 @@ test("shapeSamples and boxInsidePolygon", () => {
   assert.ok(G.boxInsidePolygon({ x: 10, y: 10, w: 50, h: 50 }, poly));
   assert.ok(!G.boxInsidePolygon({ x: 10, y: 10, w: 150, h: 50 }, poly));
 });
+
+test("text objects: objectBox uses the laid-out height; transformObject scales size and width", () => {
+  const T = require("./textlayout.js");
+  T.setMeasure((str, size) => str.length * size / 2);
+  const o = { type: "text", id: "t", x: 10, y: 20, w: 80, text: "aaaa bbbb", size: 20 };
+  const b = G.objectBox(o);
+  assert.deepEqual([b.x, b.y, b.w], [10, 20, 80]);
+  assert.equal(b.h, 2 * 20 * T.LINE_HEIGHT, "wraps to two lines");
+  assert.deepEqual(G.transformObject(o, G.translate(5, -5)), { x: 15, y: 15, w: 80, size: 20 });
+  assert.deepEqual(G.transformObject(o, G.scaleAbout(10, 20, 2)), { x: 10, y: 20, w: 160, size: 40 });
+  assert.equal(G.transformObject(o, G.scaleAbout(10, 20, 0.01)).size, 4, "size has a floor");
+  T.setMeasure(null);
+});

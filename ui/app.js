@@ -67,10 +67,11 @@ function render() {
   Images.draw(ctx, page());
   if (typeof Graphs !== "undefined") Graphs.draw(ctx, page());
   page().strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
-  (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
+  (page().objects || []).forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); else if (o.type === "text" && typeof Text !== "undefined") Text.draw(ctx, o); });
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
   Selection.overlay(ctx, page());
+  if (typeof Text !== "undefined" && Text.sync) Text.sync();
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
 }
