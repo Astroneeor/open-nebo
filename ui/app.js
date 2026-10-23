@@ -47,9 +47,9 @@ async function openPath(path) {
 
 function page() { return S.doc.pages[S.page]; }
 
-function drawStroke(s, c = ctx) {
+function drawStroke(s, c = ctx, step = 1) {
   if (!s.points.length) return;
-  const st = Pens.style(s), pts = s.points;
+  const st = Pens.style(s), pts = step > 1 ? Spatial.decimate(s.points, step) : s.points; // step > 1 only from render()'s level of detail
   c.strokeStyle = s.color; c.fillStyle = s.color; c.lineCap = st.cap; c.lineJoin = "round";
   c.save(); c.globalAlpha = Pens.opacityOf(s);
   if (pts.length === 1) { c.beginPath(); c.arc(pts[0].x, pts[0].y, s.width / 2, 0, 7); c.fill(); }
@@ -65,16 +65,42 @@ function drawStroke(s, c = ctx) {
   c.restore();
 }
 
+// Frame coalescing: hot paths (pointermove, pan, zoom, resize) call requestRender(), which batches into one render() per
+// animation frame. Discrete actions keep calling render() directly and stay synchronous (which also cancels a pending frame).
+let renderFrame = 0;
+function requestRender() {
+  if (typeof requestAnimationFrame !== "function") { render(); return; }
+  if (!renderFrame) renderFrame = requestAnimationFrame(() => { renderFrame = 0; render(); });
+}
+
+// The page as seen through the viewport: only items whose cached bounds meet the visible world rect (plus margin) survive,
+// in original order, so Layers.drawOrder yields exactly the same relative order as the full page would.
+function culled(pg) {
+  if (typeof Spatial === "undefined" || !cv.clientWidth) return { view: pg, boxes: null };
+  const r = Spatial.viewRect(V.x, V.y, V.zoom, cv.clientWidth, cv.clientHeight, 64);
+  const q = Spatial.query(pg, r, { trust: V.gesture }); // nothing edits the page mid pan/pinch, so skip revalidation then
+  const boxes = new Map();
+  q.strokes.forEach((s, i) => boxes.set(s, q.strokeBoxes[i]));
+  return { view: { ...pg, strokes: q.strokes, objects: q.objects }, boxes };
+}
+
 function render() {
+  if (renderFrame && typeof cancelAnimationFrame === "function") { cancelAnimationFrame(renderFrame); }
+  renderFrame = 0;
   V.sync(S.doc && page());
   ctx.clearRect(0, 0, cv.width, cv.height);
   if (!S.doc) return;
   V.begin(ctx);
   window.__app?.hooks.bg?.(ctx, page());
-  for (const v of Layers.drawOrder(page())) { // base layer first, then each visible layer bottom to top
+  const { view, boxes } = culled(page());
+  for (const v of Layers.drawOrder(view)) { // base layer first, then each visible layer bottom to top
     Images.draw(ctx, v);
     if (typeof Graphs !== "undefined") Graphs.draw(ctx, v);
-    v.strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
+    v.strokes.forEach((s) => { // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
+      const b = boxes && boxes.get(s);
+      if (b && !Spatial.visibleAtZoom(b, V.zoom)) return; // under ~1.5 screen px: invisible anyway
+      drawStroke(s, ctx, b ? Spatial.lodStep(b, s.points.length, V.zoom) : 1);
+    });
     v.objects.forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); else if (o.type === "text" && typeof Text !== "undefined") Text.draw(ctx, o); });
   }
   if (S.snap) Shapes.drawShape(ctx, S.snap);
@@ -113,7 +139,7 @@ function eraseAt(p) {
   const objs = page().objects || [];
   const keepObjs = S.eraserMode === "highlighter" ? objs : objs.filter((o) => !(o.type === "shape" && ed(o) && Shapes.hitShape(o, p, r)));
   if (keep !== strokes || keepObjs.length !== objs.length) {
-    page().strokes = keep; page().objects = keepObjs; touch(); render();
+    page().strokes = keep; page().objects = keepObjs; touch(); requestRender();
   }
 }
 
@@ -160,7 +186,7 @@ cv.addEventListener("pointermove", (ev) => {
     const q = S.current.points[S.current.points.length - 1];
     if (Math.hypot(q.x - S.holdOrigin.x, q.y - S.holdOrigin.y) > Shapes.HOLD_RADIUS) { S.holdOrigin = q; cancelHold(); armHold(); }
   }
-  render();
+  requestRender();
 });
 const end = (ev) => {
   if (V.up(ev)) return;
@@ -209,8 +235,8 @@ $("addPage").onclick = () => {
 $("zoomIn").onclick = () => V.zoomBy(1.25); $("zoomOut").onclick = () => V.zoomBy(0.8);
 $("resetView").onclick = () => S.doc && V.reset(page());
 History.bind((id) => S.doc && S.doc.pages.find((p) => p.id === id), (pg) => { S.page = S.doc.pages.indexOf(pg); });
-V.init(cv, $("stage"), () => S.doc && page(), () => { render(); $("zoomPct").textContent = Math.round(V.zoom * 100) + "%"; });
-window.addEventListener("resize", render);
+V.init(cv, $("stage"), () => S.doc && page(), () => { requestRender(); $("zoomPct").textContent = Math.round(V.zoom * 100) + "%"; });
+window.addEventListener("resize", requestRender);
 window.addEventListener("beforeunload", () => { if (S.dirty) saveNow(); });
 
 // ---------- Syncthing-driven changes ----------

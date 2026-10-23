@@ -7,10 +7,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-function boot() {
+function boot(opts = {}) {
   const els = {};
   const mkEl = () => ({ dataset: {}, style: {}, children: [], hidden: false, value: "", textContent: "", classList: { add() {}, remove() {}, toggle() {} },
-    append() {}, replaceChildren() {}, addEventListener() {}, setPointerCapture() {}, getContext: () => new Proxy({}, { get: () => () => {}, set: () => true }), clientWidth: 800, clientHeight: 600 });
+    append() {}, replaceChildren() {}, addEventListener() {}, setPointerCapture() {}, getContext: () => new Proxy({}, { get: (_, k) => (k === "stroke" && opts.counter ? () => { opts.counter.n++; } : () => {}), set: () => true }), clientWidth: 800, clientHeight: 600 });
   const getEl = (id) => (els[id] ||= mkEl());
   const listeners = { cv: {}, win: {} };
   const cv = getEl("cv");
@@ -34,6 +34,7 @@ function boot() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, "history.js"), "utf8").replace("const History", "var History"), ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "layers.js"), "utf8").replace("const Layers", "var Layers"), ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "app.js"), "utf8").replace(/^const /gm, "var ").replace(/^function /gm, "function "), ctx);
+  if (opts.spatial) { sandbox.Geom = require("./selection-geom.js"); vm.runInContext(fs.readFileSync(path.join(__dirname, "spatial.js"), "utf8").replace("const Spatial", "var Spatial"), ctx); }
   vm.runInContext("S.doc = null;", ctx);
   const run = (code) => vm.runInContext(code, ctx);
   run("S.doc = " + JSON.stringify(doc) + "; S.path = '/x.nebo'; S.rev = 'r';");
@@ -111,4 +112,17 @@ test("undo with an empty history is a no-op, and a conflict blocks it", () => {
   a.run("S.conflict = true");
   a.click("undo");
   assert.equal(a.pg().strokes.length, 1);
+});
+
+test("render() culls off-screen strokes when the spatial index is loaded, and drawing stays unchanged for small pages", () => {
+  const counter = { n: 0 };
+  const a = boot({ spatial: true, counter });
+  a.run("document.getElementById('cv').clientWidth = 800; document.getElementById('cv').clientHeight = 600;");
+  const mk = (id, x, y) => ({ id, color: "#000", width: 2, points: [{ x, y, p: 0.5 }, { x: x + 20, y: y + 20, p: 0.5 }] });
+  a.run("page().strokes = " + JSON.stringify([mk("in1", 10, 10), mk("in2", 100, 100), mk("far", 50000, 50000)]));
+  counter.n = 0; a.run("render()");
+  assert.equal(counter.n, 2, "only the two visible strokes are stroked");
+  a.run("V.zoom = 0.05"); // 20-unit strokes are 1px on screen: skipped
+  counter.n = 0; a.run("render()");
+  assert.equal(counter.n, 0);
 });
