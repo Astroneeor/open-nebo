@@ -117,3 +117,13 @@ input.lib-search:focus { background-color: var(--surface); }
 #editor.is-canvas #prev, #editor.is-canvas #next, #editor.is-canvas #pageNo,
 #editor.is-canvas #addPage, #editor.is-canvas #pageMenu { display: none; }
 #editor.is-canvas #pageGrp { display: none; }
+
+/* Full-text results ("In notebooks") */
+.lib-fts-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lib-fts-hit { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--fg); cursor: pointer; font: inherit; }
+.lib-fts-hit:hover, .lib-fts-hit:focus-visible { border-color: var(--line-2); background: var(--acc-soft); }
+.lib-fts-hit:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.lib-fts-head { display: flex; align-items: baseline; gap: 10px; }
+.lib-fts-page { font-size: 11.5px; color: var(--fg-3); }
+.lib-fts-snippet { font-size: 13px; color: var(--fg-2, var(--fg)); overflow-wrap: anywhere; }
+.lib-fts mark { background: var(--acc-soft); color: inherit; border-radius: 2px; box-shadow: 0 0 0 1px var(--acc); }
