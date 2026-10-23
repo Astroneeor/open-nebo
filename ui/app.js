@@ -73,6 +73,7 @@ function render() {
   Selection.overlay(ctx, page());
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
+  window.__app?.hooks.rendered?.();
 }
 
 // ---------- saving (debounced, revision-checked) ----------
