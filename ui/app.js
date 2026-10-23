@@ -75,12 +75,13 @@ function render() {
     Images.draw(ctx, v);
     if (typeof Graphs !== "undefined") Graphs.draw(ctx, v);
     v.strokes.forEach((s) => drawStroke(s)); // not forEach(drawStroke): the index would land in drawStroke's ctx parameter
-    v.objects.forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); });
+    v.objects.forEach((o) => { if (o.type === "shape") Shapes.drawShape(ctx, o); else if (o.type === "text" && typeof Text !== "undefined") Text.draw(ctx, o); });
   }
   if (S.snap) Shapes.drawShape(ctx, S.snap);
   else if (S.current) drawStroke(S.current);
   if (S.current && typeof InputUI !== "undefined") InputUI.drawPredicted(ctx, S.current); // display only, never saved
   Selection.overlay(ctx, page());
+  if (typeof Text !== "undefined" && Text.sync) Text.sync();
   V.end(ctx);
   $("pageNo").textContent = `${S.page + 1} / ${S.doc.pages.length}`;
   window.__app?.hooks.rendered?.();

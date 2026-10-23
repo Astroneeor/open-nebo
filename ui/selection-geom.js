@@ -2,6 +2,7 @@
 // Pure geometry for lasso selection. No DOM; also loadable from node for tests.
 // Boxes are { x, y, w, h }. A transform is { ox, oy, sx, sy, dx, dy }: scale about (ox, oy), then translate.
 const Geom = (() => {
+  const Tl = typeof Textlayout !== "undefined" ? Textlayout : typeof require !== "undefined" ? require("./textlayout.js") : null; // text box heights
   function pointInPolygon(p, poly) {
     let inside = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -91,6 +92,7 @@ const Geom = (() => {
   function objectBox(o) {
     if (o.type === "graph") return graphBox(o);
     if (o.type === "shape") return shapeBox(o);
+    if (o.type === "text") return Tl ? Tl.box(o) : { x: o.x, y: o.y, w: o.w, h: o.size * 1.3 };
     return { x: o.x, y: o.y, w: o.w, h: o.h };
   }
   // Representative points used for lasso inclusion (vertices; 8 points around an ellipse).
@@ -111,6 +113,10 @@ const Geom = (() => {
       return { points: o.points.map(([x, y]) => { const q = transformPoint({ x, y }, t); return [q.x, q.y]; }) };
     }
     const b = transformBox(objectBox(o), t);
+    if (o.type === "text") { // scaling changes the font size (and wrap width) uniformly; a flip only moves the box
+      const k = Math.abs(t.sx);
+      return { x: b.x, y: b.y, w: Math.max(10, o.w * k), size: Math.max(4, o.size * k) };
+    }
     if (o.type === "graph") return { x: b.x, y: b.y, size: Math.max(MIN_GRAPH, b.w) };
     return { x: b.x, y: b.y, w: b.w, h: b.h };
   }
