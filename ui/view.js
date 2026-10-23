@@ -88,6 +88,13 @@ const V = (() => {
       }
       return false;
     },
+    /** Start a one-pointer pan (stylus button, or a single finger when touch only pans). move/up below continue it. */
+    startPan(ev) {
+      cv.setPointerCapture(ev.pointerId);
+      st.panning = { id: ev.pointerId, ...local(ev) }; cv.classList.add("panning");
+    },
+    stopPan() { st.panning = null; if (cv) cv.classList.remove("panning"); },
+    touchCount() { return st.touches.size; },
     move(ev) {
       if (st.panning && ev.pointerId === st.panning.id) {
         const p = local(ev);
