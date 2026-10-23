@@ -8,7 +8,7 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 
 const S = { vault: null, entries: [], path: null, doc: null, rev: null, page: 0,
             dirty: false, tool: "pen", current: null, saveTimer: null, saving: false,
-            smart: lsGet("smartShapes") === "1", snap: null, holdTimer: null };
+            smart: lsGet("smartShapes") === "1", gridSnap: lsGet("gridSnap") === "1", snap: null, holdTimer: null };
 function lsGet(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (_) { /* storage may be unavailable */ } }
 
@@ -105,9 +105,13 @@ function eraseAt(p) {
 }
 
 // ---------- smart shapes ----------
+// Grid spacing in world units while "snap to grid" is on and the background has a grid, else 0.
+const snapStep = () => (S.gridSnap && S.doc ? Snap.step(Backgrounds.resolve(S.doc, page()), V.zoom) : 0);
 function snapOf(stroke) {
   const r = Shapes.recognize(stroke.points);
-  return r && { type: "shape", id: uid(), kind: r.kind, color: stroke.color, width: stroke.width, points: r.points };
+  const s = snapStep();
+  return r && { type: "shape", id: uid(), kind: r.kind, color: stroke.color, width: stroke.width,
+                points: s > 0 ? Snap.shapePoints(r.kind, r.points, s) : r.points };
 }
 function cancelHold() { clearTimeout(S.holdTimer); S.holdTimer = null; S.snap = null; }
 function armHold() {
@@ -181,6 +185,11 @@ $("smart").onclick = () => {
   S.smart = !S.smart; lsSet("smartShapes", S.smart ? "1" : "0");
   $("smart").classList.toggle("on", S.smart); if (!S.smart) cancelHold(); render();
 };
+$("snapGrid").classList.toggle("on", S.gridSnap);
+$("snapGrid").onclick = () => {
+  S.gridSnap = !S.gridSnap; lsSet("gridSnap", S.gridSnap ? "1" : "0");
+  $("snapGrid").classList.toggle("on", S.gridSnap); render();
+};
 $("prev").onclick = () => { if (S.doc && S.page > 0) { S.page--; render(); } };
 $("next").onclick = () => { if (S.doc && S.page < S.doc.pages.length - 1) { S.page++; render(); } };
 $("addPage").onclick = () => {
@@ -217,7 +226,7 @@ listen("vault-changed", () => {
 });
 
 // Extension surface for feature modules loaded after this script (ui/pdf.js, ...).
-window.__app = { S, hooks: {}, render, touch, saveNow, openPath, refreshList, setVault, drawStroke, page, status, banner, uid };
+window.__app = { S, hooks: {}, snapStep, render, touch, saveNow, openPath, refreshList, setVault, drawStroke, page, status, banner, uid };
 
 (async () => {
   try { await setVault(await invoke("default_vault")); } catch (e) { banner(String(e)); }

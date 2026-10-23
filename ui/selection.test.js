@@ -26,6 +26,7 @@ function setup() {
     },
     S, cv, page: () => pg, pos: (ev) => ({ x: ev.x, y: ev.y }), render: () => { renders++; }, touch: () => { touches++; },
     status() {}, uid: () => "id" + ++n,
+    Snap: require("./snap.js"), window: { __app: { snapStep: () => 0 } },
     $: (id) => (id === "stage" ? stage : mk()),
     V: { x: 0, y: 0, zoom: 1, down: () => false, move: () => false, up: () => false },
   });

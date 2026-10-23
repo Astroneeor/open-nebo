@@ -19,7 +19,7 @@ test("luminance and darkness", () => {
 });
 
 test("ink is a lighter tint on dark bases and a darker tint on light bases", () => {
-  for (const base of B.SWATCHES) {
+  for (const base of B.PRESETS.map((p) => p.color)) {
     for (const kind of ["line", "major", "dot"]) {
       const ink = B.inkFor(base, kind);
       assert.match(ink, /^#[0-9a-f]{6}$/, `${base} ${kind}`);
@@ -45,13 +45,37 @@ test("pen colour flips with the base", () => {
   assert.strictEqual(B.penFor("#ffffff"), "#000000");
 });
 
-test("presets cover plain/paper/dot/grid, each in light and dark", () => {
+test("presets: light/dark plain, paper, dot grid and grid, plus blueprint", () => {
   const ids = B.PRESETS.map((p) => p.id);
-  for (const id of ["plain", "plain-dark", "paper", "paper-dark", "dot", "dot-dark", "grid", "grid-dark"]) assert.ok(ids.includes(id), id);
+  for (const id of ["plain", "plain-dark", "paper", "paper-dark", "dot", "dot-dark", "grid", "grid-dark", "blueprint"]) assert.ok(ids.includes(id), id);
+  assert.strictEqual(new Set(ids).size, ids.length);
   for (const p of B.PRESETS) {
     assert.ok(B.valid(p), p.id);
-    assert.strictEqual(B.isDark(p.color), p.id.endsWith("-dark"), p.id);
+    assert.strictEqual(B.isDark(p.color), p.id.endsWith("-dark") || p.id === "blueprint", p.id);
   }
+  assert.deepStrictEqual(B.PRESETS.slice(0, 6).map((p) => p.name),
+    ["Light", "Dark", "Light paper", "Dark paper", "Light dot grid", "Dark dot grid"]);
+});
+
+test("blueprint lines are boosted so they read on the saturated blue", () => {
+  const bp = B.PRESETS.find((p) => p.id === "blueprint").color;
+  const lift = (base, k) => B.luminance(B.inkFor(base, k)) - B.luminance(base);
+  assert.ok(lift(bp, "line") > lift("#1e1e1e", "line") * 1.5);
+  assert.match(B.inkFor(bp, "major"), /^#[0-9a-f]{6}$/);
+});
+
+test("autoInk swaps only the two automatic colours, on strokes and shapes", () => {
+  const mk = () => ({
+    strokes: [{ color: "#000000" }, { color: "#ff0000" }, { color: "#F2F2F2" }],
+    objects: [{ type: "shape", color: "#000000" }, { type: "image" }, { type: "graph" }],
+  });
+  const pg = mk();
+  assert.strictEqual(B.autoInk(pg, true), 2);
+  assert.deepStrictEqual(pg.strokes.map((s) => s.color), ["#f2f2f2", "#ff0000", "#F2F2F2"]);
+  assert.strictEqual(pg.objects[0].color, "#f2f2f2");
+  assert.strictEqual(B.autoInk(pg, false), 3); // back: both #f2f2f2 strokes (one was already light) and the shape
+  assert.deepStrictEqual(pg.strokes.map((s) => s.color), ["#000000", "#ff0000", "#000000"]);
+  assert.strictEqual(B.autoInk({}, true), 0);
 });
 
 test("resolve: page override, then notebook default, then plain white", () => {

@@ -142,7 +142,10 @@ const Selection = (() => {
                            : hitItem(p) || (box && Geom.inBox(p, box)) ? "move" : "crosshair";
       return;
     }
-    if (drag.mode === "move") applyFrom(drag.before, Geom.translate(p.x - drag.start.x, p.y - drag.start.y));
+    if (drag.mode === "move") {
+      const d = Snap.delta(drag.box, p.x - drag.start.x, p.y - drag.start.y, window.__app.snapStep());
+      applyFrom(drag.before, Geom.translate(d.dx, d.dy));
+    }
     else {
       const c = corners(drag.box), a = c[opposite[drag.mode]];
       const f = Geom.cornerScale(a, c[drag.mode], p);
