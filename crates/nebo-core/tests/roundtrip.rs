@@ -5,7 +5,7 @@ fn sample() -> Document {
     d.pages[0].strokes.push(Stroke {
         id: "s1".into(),
         color: "#ff0000".into(),
-        width: 3.0,
+        width: 3.0, kind: None, opacity: None, layer: None,
         points: vec![Point { x: 1.0, y: 2.0, t: 0, p: 0.4 }, Point { x: 5.5, y: 6.5, t: 16, p: 0.9 }],
     });
     d
@@ -138,7 +138,7 @@ fn with_image() -> Document {
     use base64::Engine;
     let mut d = sample();
     d.pages[0].objects.push(PageObject::Image(ImageObject {
-        id: "img1".into(), x: 10.0, y: 20.0, w: 100.0, h: 50.0, mime: "image/png".into(), source: None,
+        id: "img1".into(), x: 10.0, y: 20.0, w: 100.0, h: 50.0, mime: "image/png".into(), source: None, layer: None,
         data: base64::engine::general_purpose::STANDARD.encode([0x89, b'P', b'N', b'G', 1, 2, 3]),
     }));
     d
@@ -181,7 +181,7 @@ fn bad_image_input_rejected() {
 fn graph(id: &str, lo: f32, hi: f32) -> PageObject {
     PageObject::Graph(GraphObject {
         id: id.into(), x: 10.0, y: 20.0, size: 400.0,
-        xmin: lo, xmax: hi, ymin: lo, ymax: hi, step: 1.0, labels: true, axes: true, grid: true,
+        xmin: lo, xmax: hi, ymin: lo, ymax: hi, step: 1.0, labels: true, axes: true, grid: true, layer: None,
     })
 }
 
@@ -209,7 +209,7 @@ fn shape_objects_roundtrip_with_other_objects() {
     d.pages[0].objects.push(graph("g1", -5.0, 5.0));
     d.pages[0].objects.push(PageObject::Shape(Shape {
         id: "s1".into(), kind: ShapeKind::Arrow, color: "#ff0000".into(), width: 3.0,
-        points: vec![[0.0, 0.0], [50.0, 25.0]],
+        points: vec![[0.0, 0.0], [50.0, 25.0]], layer: None,
     }));
     assert_eq!(package::read(&package::write(&d).unwrap()).unwrap(), d);
 }
@@ -286,4 +286,47 @@ fn legacy_template_attribute_maps_to_style() {
     }
     let bytes = with_page_xml(&sample(), |x| x.replace("height=", "template=\"evil\" height="));
     assert!(matches!(package::read(&bytes), Err(Error::Invalid(_))));
+}
+
+#[test]
+fn pen_kinds_opacity_layers_and_text_roundtrip() {
+    use nebo_core::model::{BackgroundStyle, Layer, TextObject};
+    let mut d = sample();
+    {
+        let p = &mut d.pages[0];
+        p.layers = vec![
+            Layer { id: "l1".into(), name: "Ink".into(), visible: true, locked: false },
+            Layer { id: "l2".into(), name: "Notes".into(), visible: false, locked: true },
+        ];
+        p.strokes[0].kind = Some("highlighter".into());
+        p.strokes[0].opacity = Some(0.35);
+        p.strokes[0].layer = Some("l1".into());
+        p.objects.push(PageObject::Text(TextObject {
+            id: "t1".into(), x: 5.0, y: 6.0, w: 300.0, text: "héllo <b>&\nworld".into(),
+            size: 20.0, color: "#112233".into(), bold: true, italic: false, layer: Some("l2".into()),
+        }));
+        p.style = Some(BackgroundStyle { pattern: "persp2".into(), color: "#ffffff".into() });
+    }
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert_eq!(back, d);
+}
+
+#[test]
+fn old_files_without_new_fields_still_read() {
+    // A stroke/page written before kind/opacity/layers existed: all optional.
+    let d = sample();
+    let back = package::read(&package::write(&d).unwrap()).unwrap();
+    assert!(back.pages[0].layers.is_empty());
+    assert_eq!(back.pages[0].strokes[0].kind, None);
+}
+
+#[test]
+fn unsafe_text_object_id_rejected() {
+    use nebo_core::model::TextObject;
+    let mut d = sample();
+    d.pages[0].objects.push(PageObject::Text(TextObject {
+        id: "../x".into(), x: 0.0, y: 0.0, w: 10.0, text: String::new(), size: 12.0,
+        color: "#000000".into(), bold: false, italic: false, layer: None,
+    }));
+    assert!(package::write(&d).is_err());
 }

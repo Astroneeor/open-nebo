@@ -23,6 +23,15 @@ pub struct Stroke {
     pub color: String,
     #[serde(default = "default_width")]
     pub width: f32,
+    /// Pen type: `pen` (default when absent), `highlighter`, `pencil` or `marker`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    /// 0.0..=1.0; absent means fully opaque (highlighters set it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f32>,
+    /// Layer id; absent means the page's base layer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
     pub points: Vec<Point>,
 }
 
@@ -43,6 +52,18 @@ pub struct View {
     pub zoom: f32,
 }
 
+/// A drawing layer. Items reference it by id through their `layer` field; items with no `layer` live on the
+/// page's base layer, which always exists and is not listed here. Order in `Page::layers` is bottom to top.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Layer {
+    pub id: String,
+    pub name: String,
+    #[serde(default = "yes")]
+    pub visible: bool,
+    #[serde(default)]
+    pub locked: bool,
+}
+
 /// `width`/`height` are the size of the original paper sheet, kept for files
 /// written before the canvas became infinite; strokes may now lie outside it
 /// (negative coordinates included).
@@ -58,6 +79,9 @@ pub struct Page {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<BackgroundStyle>,
     pub strokes: Vec<Stroke>,
+    /// Extra layers above the base layer, bottom to top.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layers: Vec<Layer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
     /// Non-ink objects, drawn in order (later = on top), beneath the strokes.
@@ -72,6 +96,7 @@ pub enum PageObject {
     Image(ImageObject),
     Graph(GraphObject),
     Shape(Shape),
+    Text(TextObject),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +107,30 @@ pub enum ShapeKind {
     Ellipse,
     Rect,
     Triangle,
+}
+
+/// A typed text box. `w` is the wrap width in page units; the height follows from the text.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TextObject {
+    pub id: String,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub text: String,
+    #[serde(default = "default_font_size")]
+    pub size: f32,
+    #[serde(default = "default_color")]
+    pub color: String,
+    #[serde(default)]
+    pub bold: bool,
+    #[serde(default)]
+    pub italic: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
+}
+
+fn default_font_size() -> f32 {
+    24.0
 }
 
 /// A clean geometric shape produced by smart-shape recognition.
@@ -98,6 +147,8 @@ pub struct Shape {
     #[serde(default = "default_width")]
     pub width: f32,
     pub points: Vec<[f32; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
 }
 
 
@@ -122,6 +173,8 @@ pub struct GraphObject {
     pub axes: bool,
     #[serde(default = "yes")]
     pub grid: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
 }
 
 fn default_step() -> f32 {
@@ -149,10 +202,12 @@ pub struct ImageObject {
     /// Where the image came from, e.g. `pdf` for pages placed on the canvas by PDF import.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<String>,
 }
 
 /// Patterns accepted for `BackgroundStyle::pattern`.
-pub const PATTERNS: [&str; 4] = ["plain", "paper", "grid", "dot"];
+pub const PATTERNS: [&str; 9] = ["plain", "paper", "grid", "dot", "isometric", "triangle", "persp1", "persp2", "persp3"];
 
 /// Canvas background: a pattern drawn over a base colour. The line/dot ink is derived from the
 /// base colour by the UI, so only these two values are stored.
@@ -176,7 +231,7 @@ impl BackgroundStyle {
 
 impl Page {
     pub fn new(id: impl Into<String>) -> Self {
-        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, style: None, strokes: Vec::new(), view: None, objects: Vec::new() }
+        Self { id: id.into(), width: 1404.0, height: 1872.0, background: None, style: None, strokes: Vec::new(), layers: Vec::new(), view: None, objects: Vec::new() }
     }
 }
 

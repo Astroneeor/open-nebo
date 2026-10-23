@@ -29,7 +29,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use base64::Engine;
 
-use crate::model::{BackgroundStyle, DocKind, Document, GraphObject, ImageObject, OpaqueEntry, Page, PageObject, Shape, Stroke, View};
+use crate::model::{BackgroundStyle, DocKind, Document, GraphObject, ImageObject, Layer, OpaqueEntry, Page, PageObject, Shape, Stroke, TextObject, View};
 use crate::Error;
 
 /// MIME type written into every new package.
@@ -54,6 +54,8 @@ struct Meta {
 #[derive(Serialize, Deserialize)]
 struct InkFile {
     strokes: Vec<Stroke>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    layers: Vec<Layer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     view: Option<View>,
 }
@@ -71,9 +73,12 @@ enum ObjectMeta {
         id: String, x: f32, y: f32, w: f32, h: f32, mime: String, media: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         source: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        layer: Option<String>,
     },
     Graph(GraphObject),
     Shape(Shape),
+    Text(TextObject),
 }
 
 fn ext_for(mime: &str) -> Result<&'static str, Error> {
@@ -186,7 +191,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
         zw.start_file(format!("pages/{id}/page.xml"), deflated)?;
         zw.write_all(page_xml.as_bytes())?;
         zw.start_file(format!("pages/{id}/ink.jink"), deflated)?;
-        zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone(), view: p.view })?)?;
+        zw.write_all(&serde_json::to_vec(&InkFile { strokes: p.strokes.clone(), layers: p.layers.clone(), view: p.view })?)?;
 
         if !p.objects.is_empty() {
             let mut metas = Vec::new();
@@ -201,6 +206,11 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
                     PageObject::Shape(s) => {
                         safe_id(&s.id)?;
                         metas.push(ObjectMeta::Shape(s.clone()));
+                        continue;
+                    }
+                    PageObject::Text(t) => {
+                        safe_id(&t.id)?;
+                        metas.push(ObjectMeta::Text(t.clone()));
                         continue;
                     }
                 };
@@ -218,7 +228,7 @@ pub fn write(doc: &Document) -> Result<Vec<u8>, Error> {
                 files.push(media.clone());
                 metas.push(ObjectMeta::Image {
                     id: im.id.clone(), x: im.x, y: im.y, w: im.w, h: im.h, mime: im.mime.clone(), media,
-                    source: im.source.clone(),
+                    source: im.source.clone(), layer: im.layer.clone(),
                 });
             }
             zw.start_file(format!("pages/{id}/objects.json"), deflated)?;
@@ -340,7 +350,7 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
         if let Some(b) = &background {
             safe_media(b)?;
         }
-        let InkFile { strokes, view } = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?;
+        let InkFile { strokes, layers, view } = serde_json::from_slice::<InkFile>(&read_entry(&mut zip, &ink)?)?;
         claimed.push(px);
         claimed.push(ink);
 
@@ -350,8 +360,8 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
             let file: ObjectsFile = serde_json::from_slice(&read_entry(&mut zip, &obj_path)?)?;
             claimed.push(obj_path);
             for meta in file.objects {
-                let (image_id, x, y, w, h, mime, media, source) = match meta {
-                    ObjectMeta::Image { id, x, y, w, h, mime, media, source } => (id, x, y, w, h, mime, media, source),
+                let (image_id, x, y, w, h, mime, media, source, layer) = match meta {
+                    ObjectMeta::Image { id, x, y, w, h, mime, media, source, layer } => (id, x, y, w, h, mime, media, source, layer),
                     ObjectMeta::Graph(g) => {
                         safe_id(&g.id)?;
                         objects.push(PageObject::Graph(g));
@@ -362,6 +372,11 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                         objects.push(PageObject::Shape(s));
                         continue;
                     }
+                    ObjectMeta::Text(t) => {
+                        safe_id(&t.id)?;
+                        objects.push(PageObject::Text(t));
+                        continue;
+                    }
                 };
                 safe_source(&source)?;
                 let ext = ext_for(&mime)?;
@@ -370,10 +385,10 @@ pub fn read(bytes: &[u8]) -> Result<Document, Error> {
                 }
                 let data = base64::engine::general_purpose::STANDARD.encode(read_entry(&mut zip, &media)?);
                 claimed.push(media);
-                objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data, source }));
+                objects.push(PageObject::Image(ImageObject { id: image_id, x, y, w, h, mime, data, source, layer }));
             }
         }
-        pages.push(Page { id: id.clone(), width: w, height: h, background, style, strokes, view, objects });
+        pages.push(Page { id: id.clone(), width: w, height: h, background, style, strokes, layers, view, objects });
     }
 
     let mut opaque = Vec::new();
