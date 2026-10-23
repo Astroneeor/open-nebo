@@ -7,6 +7,39 @@ and APIs may change in any release.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-22
+
+Tablet-readiness release: more pen types, layers, text, a page sidebar, richer backgrounds,
+export, shortcuts, search and rendering that scales. None of the new interface has been used
+with a physical pen or touch device yet, and the Windows build is unverified.
+
+### Added
+- **Pen types:** highlighter (one translucent path, no overlap darkening), pencil and marker next to the
+  pressure pen, each with its own default width; the last choice is remembered. Strokes record `kind` and
+  `opacity` (files from 0.1.x read as plain pens).
+- **Eraser variants:** stroke, point (splits a stroke at the erased part) and highlighter-only.
+- **Layers:** a layers panel (add, rename, reorder, hide, lock, move selection, merge down). Hidden layers are
+  not drawn, exported or hit-tested; locked layers cannot be edited or erased. Layer edits are undoable.
+  Stored as `Page.layers` plus an optional `layer` id on every item.
+- **Text tool:** typed, wrapped text boxes (size, bold, italic, colour) that select, move, scale, copy and
+  export to PDF like other objects. Stored as `text` page objects.
+- **Page sidebar:** live thumbnails with drag-to-reorder, duplicate, delete, insert before and add after.
+  The "+ Page" button now inserts after the current page.
+- **Backgrounds:** nine fixed presets (light and dark plain, paper, dot grid and grid, plus blueprint), five
+  more lattices and guides (isometric, triangle, one-, two- and three-point perspective), a generated paper
+  grain, and **automatic ink**: switching between a light and a dark background swaps black and light ink.
+- **Snap to grid** for smart shapes and moved selections on grid, dot and triangle backgrounds.
+- **PNG and SVG export** (current page or all pages; background, grid and scale options) beside PDF.
+- **Keyboard shortcuts** editor (click to record, conflict warnings, reset) and an accessibility pass
+  (focus rings, `aria-pressed`, Escape returns focus, status live region, contrast-checked text colours).
+- **Stylus input:** palm rejection, touch-pans-once-a-pen-is-seen, barrel-button and eraser-end actions, and a
+  settings popover with a pointer diagnostics line.
+- **Search** of typed text across all notebooks in the library, with page-level results.
+- **Rendering for big notebooks:** a spatial index with viewport culling, level of detail when zoomed out and
+  frame coalescing. On a synthetic 50,000-stroke page about 2% of strokes are drawn at 100% zoom.
+- CI runs the JavaScript tests and clippy, release notes come from this file, and releases ship `SHA256SUMS.txt`
+  and `.rpm`/`.AppImage` bundles in addition to `.deb`, `.msi` and `.exe`. See `docs/RELEASING.md`.
+
 ### Changed
 - Visual redesign: a slim top bar, a floating, collapsible tool palette and icons in place of text
   buttons (Lucide, ISC licence, vendored as `ui/icons.js`). One design system in `ui/style.css`
@@ -24,6 +57,8 @@ and APIs may change in any release.
 - The `index.xml` namespace is now Open Nebo's own. Real Nebo compatibility is out of scope.
 
 ### Fixed
+- A stroke whose pointer event reported an empty coalesced-event list ended up a single dot; it now falls back
+  to the event itself.
 - A notebook opened from the library was fitted to a zero-width hidden editor, so it came up at 5% zoom
   (the minimum) and stayed there. The view now waits until the editor is visible.
 - The colour wheel is no longer drawn solid black while a black colour is selected.
@@ -45,12 +80,11 @@ and APIs may change in any release.
   A tap selects a graph; a drag that starts on an unselected graph is a lasso, so you can still select ink
   written on it. The graph parameter panel follows the selection.
 
-- Canvas backgrounds: plain, paper (lined), grid and dot patterns over any base colour, with presets for each
-  in light and dark. The line/dot ink is derived from the base colour (a darker tint on light bases, a lighter
+- Canvas backgrounds: plain, paper (lined), grid and dot patterns, with presets for each in light and dark. The line/dot ink is derived from the base colour (a darker tint on light bases, a lighter
   one on dark bases). Set per notebook (`Document.style`, `meta.json`) with an optional per-page override
   (`Page.style`, `pattern`/`bgcolor` attributes in `page.xml`). Drawn in world space so it tiles across the
-  infinite canvas and thins out when zoomed far out. A Background popover (presets, pattern, swatches, custom
-  colour, "Apply to all pages") and PDF export both use it.
+  infinite canvas and thins out when zoomed far out. A Background popover (fixed presets and "Apply to all
+  pages", no colour settings) and PDF export both use it.
 
 ### Changed
 - The page `template` field (lined/grid/dotted) is replaced by the background style. Old files with a
@@ -78,6 +112,7 @@ First packaged release (same feature set as 0.1.0; installers for Linux and Wind
 - Compatibility with files written by the real Nebo is unverified (no sample file tested).
 - Binary `.bdom`/`.bink` members are rejected. No handwriting recognition.
 
-[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Astroneeor/open-nebo/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Astroneeor/open-nebo/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Astroneeor/open-nebo/releases/tag/v0.1.0

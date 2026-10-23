@@ -4,8 +4,9 @@ An open-source, cross-platform (Linux + Windows) handwritten-notebook app. Noteb
 `.onb` files ("Open Nebo Book", a zip, MIME `application/vnd.opennebo+zip`) that live in a
 folder synced by [Syncthing](https://syncthing.net), the same way an Obsidian vault does.
 
-**Status: early.** Ink capture, pages, eraser, undo, autosave and the sync-safety
-layer work. See limitations below.
+**Status: early (0.2).** Pen types, layers, text, a page sidebar, backgrounds, PDF/PNG/SVG export,
+search and the sync-safety layer work. Tablet input (palm rejection, stylus buttons) is implemented but has not
+been tried on real pen hardware yet. See limitations below.
 
 <p>
   <img src="docs/screenshots/library-light.png" alt="The library: folder tree, notebook cards with thumbnails" width="49%">
@@ -15,6 +16,18 @@ layer work. See limitations below.
 The interface follows light and dark system themes (with a manual toggle), uses a floating tool
 palette and icons throughout (icons are [Lucide](https://lucide.dev), ISC licence, in
 `ui/vendor/LUCIDE-LICENSE`).
+
+## Features
+
+- Infinite pannable, zoomable canvas; pressure pen, highlighter, pencil and marker; stroke, point and
+  highlighter-only erasers; smart shapes with optional snap-to-grid; lasso/marquee select; typed text boxes;
+  images, coordinate grids and graph paper; undo and redo (300 steps).
+- Layers (hide, lock, reorder), a page sidebar with thumbnails and drag-to-reorder, and an infinite-board mode.
+- Backgrounds: light, dark, paper, dot grid, grid, blueprint, isometric, triangle and perspective guides, with
+  automatic ink that flips between black and light when the background changes.
+- PDF import (as page backgrounds) and PDF, PNG and SVG export.
+- Library with folders, recents, and search of notebook names and typed text.
+- Editable keyboard shortcuts; light and dark themes.
 
 ## Layout
 
@@ -39,7 +52,8 @@ choose the same folder in the app. The app:
 ## Build
 
 ```
-cargo test -p nebo-core
+cargo test --workspace
+(cd ui && node --test)
 cd src-tauri && cargo tauri dev        # needs: cargo install tauri-cli --version "^2"
 cargo tauri build
 ```
@@ -54,8 +68,13 @@ Linux needs `webkit2gtk-4.1`. Windows builds come from the GitHub Actions workfl
   Packages with binary members (`*.bdom`, `*.bink`) are rejected with a clear error, not guessed
   at. Unknown archive members are preserved on save.
 - No handwriting recognition. MyScript's engine is proprietary; a recognizer plug-in point is future work.
-- PDF import/export is raster-only: imported pages are images (no text selection/links), export is a page image per page. JPEG 2000 images inside PDFs may not render. No shapes, math, or text-block editing.
-- Not tested with a physical pen/touch device.
+- PDF import/export is raster-only: imported pages are images (no text selection/links), export is a page image per page. JPEG 2000 images inside PDFs may not render.
+- No math or diagram recognition. Search covers typed text and notebook names only, not handwriting.
+- SVG export draws isometric, triangle and perspective backgrounds as a solid colour, and wraps text with an
+  estimated character width.
+- Not tested with a physical pen/touch device; the Windows installer has not been built or run by the author.
+- The point eraser also removes any shape it touches (it only splits freehand strokes).
+- Hide/lock of the base layer and the active layer are not saved with the notebook.
 
 ## Disclaimer
 
