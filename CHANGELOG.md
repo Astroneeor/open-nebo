@@ -7,6 +7,18 @@ and APIs may change in any release.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-23
+
+First downloadable 0.2 release. It contains everything listed under 0.2.0 (pen types, layers, text,
+page sidebar, backgrounds with automatic ink, snap to grid, PNG/SVG export, shortcuts, stylus input,
+search, faster rendering); see the
+[full 0.2.0 notes](https://github.com/Astroneeor/open-nebo/blob/main/CHANGELOG.md#020---2026-10-22).
+Not yet tried on a physical pen or touch device.
+
+### Fixed
+- The release job's checksum step split file names on spaces, so it failed on the installers ("Open Nebo_...").
+  The `v0.2.0` tag therefore has no published installers; use 0.2.1.
+
 ## [0.2.0] - 2026-10-22
 
 Tablet-readiness release: more pen types, layers, text, a page sidebar, richer backgrounds,
@@ -112,7 +124,8 @@ First packaged release (same feature set as 0.1.0; installers for Linux and Wind
 - Compatibility with files written by the real Nebo is unverified (no sample file tested).
 - Binary `.bdom`/`.bink` members are rejected. No handwriting recognition.
 
-[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Astroneeor/open-nebo/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Astroneeor/open-nebo/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Astroneeor/open-nebo/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Astroneeor/open-nebo/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Astroneeor/open-nebo/releases/tag/v0.1.0

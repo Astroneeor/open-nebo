@@ -1980,7 +1980,7 @@ dependencies = [
 
 [[package]]
 name = "nebo-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.22.1",
  "quick-xml 0.36.2",
@@ -2259,7 +2259,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "open-nebo"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "dirs 5.0.1",
  "nebo-core",
