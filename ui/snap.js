@@ -1,13 +1,15 @@
 "use strict";
-// Snap to grid: pure helpers. Only the "grid" and "dot" backgrounds have a lattice to snap to; the lattice
+// Snap to grid: pure helpers. Only the square-lattice backgrounds ("grid", "dot", "triangle") have a lattice to snap to (isometric and perspective do not); the lattice
 // spacing is whatever the background currently draws (it doubles when zoomed far out), so snapping matches
 // what is on screen. Used for smart-shape points and for moving a selection.
 (function (root) {
   const B = typeof module !== "undefined" && module.exports ? require("./backgrounds.js") : root.Backgrounds;
 
+  const SQUARE = ["grid", "dot", "triangle"];
+
   /** Grid spacing in world units for `style` at `zoom`, or 0 when the background has no grid. */
   function step(style, zoom) {
-    if (!style || (style.pattern !== "grid" && style.pattern !== "dot")) return 0;
+    if (!style || !SQUARE.includes(style.pattern)) return 0;
     return B.spacing(style.pattern, zoom);
   }
 

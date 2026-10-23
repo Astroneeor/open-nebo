@@ -1,32 +1,48 @@
 "use strict";
-// Canvas backgrounds: a pattern (plain / paper / grid / dot) over a base colour, drawn in world
+// Canvas backgrounds: a pattern (plain / paper / grid / dot / isometric / triangle / perspective guides) over a base colour, drawn in world
 // coordinates under the ink so it pans and zooms with the infinite canvas. The line and dot ink is
 // derived from the base colour: a darker tint on light bases, a lighter tint on dark ones.
 (function (root) {
-  const PATTERNS = ["plain", "paper", "grid", "dot"];
+  const PATTERNS = ["plain", "paper", "grid", "dot", "isometric", "triangle", "persp1", "persp2", "persp3"];
   const DEFAULT = { pattern: "plain", color: "#ffffff" };
 
   // The fixed choices offered by the picker. Blueprint is a grid on a deep blue; its lines are boosted (BOOST)
   // because a 14% tint barely shows on a saturated base.
   const BLUEPRINT = "#1d3f7a";
+  // `group` is the picker heading (Plain / Paper / Grids / Guides); presets are listed in group order.
   const PRESETS = [
-    { id: "plain", name: "Light", pattern: "plain", color: "#ffffff" },
-    { id: "plain-dark", name: "Dark", pattern: "plain", color: "#1e1e1e" },
-    { id: "paper", name: "Light paper", pattern: "paper", color: "#f6f1e4" },
-    { id: "paper-dark", name: "Dark paper", pattern: "paper", color: "#2a2a2e" },
-    { id: "dot", name: "Light dot grid", pattern: "dot", color: "#ffffff" },
-    { id: "dot-dark", name: "Dark dot grid", pattern: "dot", color: "#1e1e1e" },
-    { id: "grid", name: "Light grid", pattern: "grid", color: "#ffffff" },
-    { id: "grid-dark", name: "Dark grid", pattern: "grid", color: "#1e1e1e" },
-    { id: "blueprint", name: "Blueprint", pattern: "grid", color: BLUEPRINT },
+    { id: "plain", name: "Light", pattern: "plain", color: "#ffffff", group: "Plain" },
+    { id: "plain-dark", name: "Dark", pattern: "plain", color: "#1e1e1e", group: "Plain" },
+    { id: "paper", name: "Light paper", pattern: "paper", color: "#f6f1e4", group: "Paper" },
+    { id: "paper-dark", name: "Dark paper", pattern: "paper", color: "#2a2a2e", group: "Paper" },
+    { id: "dot", name: "Light dot grid", pattern: "dot", color: "#ffffff", group: "Grids" },
+    { id: "dot-dark", name: "Dark dot grid", pattern: "dot", color: "#1e1e1e", group: "Grids" },
+    { id: "grid", name: "Light grid", pattern: "grid", color: "#ffffff", group: "Grids" },
+    { id: "grid-dark", name: "Dark grid", pattern: "grid", color: "#1e1e1e", group: "Grids" },
+    { id: "blueprint", name: "Blueprint", pattern: "grid", color: BLUEPRINT, group: "Grids" },
+    { id: "isometric", name: "Isometric", pattern: "isometric", color: "#ffffff", group: "Grids" },
+    { id: "triangle", name: "Triangle", pattern: "triangle", color: "#ffffff", group: "Grids" },
+    { id: "persp1", name: "Perspective 1pt", pattern: "persp1", color: "#ffffff", group: "Guides" },
+    { id: "persp2", name: "Perspective 2pt", pattern: "persp2", color: "#ffffff", group: "Guides" },
+    { id: "persp3", name: "Perspective 3pt", pattern: "persp3", color: "#ffffff", group: "Guides" },
   ];
   const BOOST = { [BLUEPRINT]: 1.9 };
 
   // World-unit spacing of each pattern at zoom 1, and the smallest on-screen gap (CSS px) before the
   // pattern doubles its spacing. Doubling keeps lines aligned to world multiples, so nothing swims.
-  const GAP = { paper: 44, grid: 40, dot: 40 };
-  const MIN_PX = { paper: 9, grid: 9, dot: 14 };
+  const GAP = { paper: 44, grid: 40, dot: 40, isometric: 40, triangle: 40 };
+  const MIN_PX = { paper: 9, grid: 9, dot: 14, isometric: 9, triangle: 9 };
   const MAX_DOTS = 30000;
+  const MAX_LINES = 4000; // cap on slanted lines per draw, so a huge rect can never stall
+  const SLOPE30 = 1 / Math.sqrt(3); // tan 30deg: the isometric diagonals
+
+  // Perspective guides live in world space (they do not scale with a spacing): each vanishing point
+  // radiates LINES lines (so twice as many rays) at evenly spaced angles, plus one horizon at y = 0.
+  const PERSP = {
+    persp1: { vps: [[0, 0]], lines: 24 },
+    persp2: { vps: [[-1200, 0], [1200, 0]], lines: 18 },
+    persp3: { vps: [[-1200, 0], [1200, 0], [0, 1800]], lines: 16 },
+  };
 
   const HEX = /^#[0-9a-fA-F]{6}$/;
   const isHex = (c) => typeof c === "string" && HEX.test(c);
@@ -116,10 +132,66 @@
     return n;
   }
 
+  /** World spacing of a lattice pattern at `zoom`; 0 for patterns without a lattice (plain, perspective). */
   function spacing(pattern, zoom) {
     let s = GAP[pattern];
+    if (!s) return 0;
     while (s * zoom < MIN_PX[pattern]) s *= 2;
     return s;
+  }
+
+  /** Isometric (verticals plus +-30deg) and triangle (square grid plus one 45deg diagonal) lattices. */
+  function drawSlanted(ctx, style, rect, s) {
+    const { x0, y0, x1, y1 } = rect, iso = style.pattern === "isometric";
+    const w = x1 - x0, h = y1 - y0;
+    // Perpendicular spacing is s for every family, so the 30deg lines are 2s/sqrt(3) apart vertically.
+    const t = iso ? SLOPE30 : 1, stepOf = (s) => (iso ? (2 * s) / Math.sqrt(3) : s);
+    const est = (s) => w / s + (iso ? 2 : 1) * (h + t * w) / stepOf(s) + (iso ? 0 : h / s);
+    while (est(s) > MAX_LINES) s *= 2;
+    const step = stepOf(s);
+    ctx.strokeStyle = inkFor(style.color, "line");
+    ctx.beginPath();
+    for (let i = Math.ceil(x0 / s); i * s <= x1; i++) { ctx.moveTo(i * s, y0); ctx.lineTo(i * s, y1); }
+    if (!iso) for (let i = Math.ceil(y0 / s); i * s <= y1; i++) { ctx.moveTo(x0, i * s); ctx.lineTo(x1, i * s); }
+    // y = t*x + c (down-right in screen space, since y grows downward)
+    for (let j = Math.ceil((y0 - t * x1) / step); j * step <= y1 - t * x0; j++) {
+      const c = j * step; ctx.moveTo(x0, t * x0 + c); ctx.lineTo(x1, t * x1 + c);
+    }
+    if (iso) for (let j = Math.ceil((y0 + t * x0) / step); j * step <= y1 + t * x1; j++) {
+      const c = j * step; ctx.moveTo(x0, -t * x0 + c); ctx.lineTo(x1, -t * x1 + c);
+    }
+    ctx.stroke();
+  }
+
+  /** The visible part of the infinite line through (px,py) with direction (dx,dy), or null. */
+  function clipLine(px, py, dx, dy, r) {
+    let lo = -Infinity, hi = Infinity;
+    for (const [p, d, a, b] of [[px, dx, r.x0, r.x1], [py, dy, r.y0, r.y1]]) {
+      if (Math.abs(d) < 1e-12) { if (p < a || p > b) return null; continue; }
+      let t0 = (a - p) / d, t1 = (b - p) / d;
+      if (t0 > t1) [t0, t1] = [t1, t0];
+      lo = Math.max(lo, t0); hi = Math.min(hi, t1);
+    }
+    return lo < hi ? [px + dx * lo, py + dy * lo, px + dx * hi, py + dy * hi] : null;
+  }
+
+  function drawPersp(ctx, style, rect, w1, cfg) {
+    ctx.lineWidth = w1;
+    ctx.strokeStyle = inkFor(style.color, "line");
+    ctx.beginPath();
+    for (const [vx, vy] of cfg.vps) {
+      for (let k = 0; k < cfg.lines; k++) {
+        const a = (k + 0.5) * Math.PI / cfg.lines; // offset so no ray lies exactly on the horizon
+        const seg = clipLine(vx, vy, Math.cos(a), Math.sin(a), rect);
+        if (seg) { ctx.moveTo(seg[0], seg[1]); ctx.lineTo(seg[2], seg[3]); }
+      }
+    }
+    ctx.stroke();
+    const hz = clipLine(0, 0, 1, 0, rect);
+    if (hz) {
+      ctx.strokeStyle = inkFor(style.color, "major");
+      ctx.beginPath(); ctx.moveTo(hz[0], hz[1]); ctx.lineTo(hz[2], hz[3]); ctx.stroke();
+    }
   }
 
   /**
@@ -135,8 +207,9 @@
     if (style.pattern === "paper") drawGrain(ctx, style, rect);
     if (style.pattern === "plain" || !(zoom > 0)) { ctx.restore(); return; }
 
-    let s = spacing(style.pattern, zoom);
     const w1 = 1.25 / zoom;
+    if (PERSP[style.pattern]) { drawPersp(ctx, style, rect, w1, PERSP[style.pattern]); ctx.restore(); return; }
+    let s = spacing(style.pattern, zoom);
     if (style.pattern === "dot") {
       while (((x1 - x0) / s) * ((y1 - y0) / s) > MAX_DOTS) s *= 2;
       const r = 1.5 / zoom;
@@ -150,6 +223,7 @@
     }
 
     ctx.lineWidth = w1;
+    if (style.pattern === "isometric" || style.pattern === "triangle") { drawSlanted(ctx, style, rect, s); ctx.restore(); return; }
     const major = style.pattern === "grid" ? 5 : 0;
     const strokeLines = (kind, pick, vertical) => {
       ctx.strokeStyle = inkFor(style.color, kind);
