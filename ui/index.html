@@ -23,6 +23,7 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
       <button id="prev" data-icon="chevron-left" title="Previous page" type="button"></button>
       <span id="pageNo" title="Current page">–</span>
       <button id="next" data-icon="chevron-right" title="Next page" type="button"></button>
+      <button id="sidebarToggle" data-icon="files" title="Show or hide the page list" type="button" aria-expanded="true" hidden></button>
       <button id="addPage" data-icon="add-page" title="Add a blank page" type="button"></button>
     </div>
     <span class="grow"></span>
@@ -44,7 +45,10 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
     </div>
   </header>
   <div id="banner" hidden></div>
-  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="body">
+    <aside id="pageSidebar" aria-label="Pages" hidden><ol id="pageThumbs"></ol></aside>
+    <div id="stage"><canvas id="cv"></canvas></div>
+  </div>
 
   <aside id="palette" class="palette" aria-label="Tools">
     <button id="pen" class="on" data-icon="pen" title="Pen" type="button"></button>
@@ -80,7 +84,9 @@ try { var t = localStorage.getItem("theme"); if (t === "light" || t === "dark") 
 <script src="colorpicker.js"></script>
 <script src="app.js"></script>
 <script src="graphs.js"></script>
+<script src="pageops.js"></script>
 <script src="pages.js"></script>
+<script src="sidebar.js"></script>
 <script src="bgpicker.js"></script>
 <script src="library.js"></script>
 <script src="chrome.js"></script>

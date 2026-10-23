@@ -286,3 +286,27 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); }
 #inputPop label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-2); }
 #inputPop select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm, 6px); padding: 5px 6px; }
 #inputPop .diag { font-size: 11px; color: var(--fg-2); font-variant-numeric: tabular-nums; margin: 0; }
+
+/* ---------- page sidebar ---------- */
+#body { flex: 1; display: flex; min-height: 0; min-width: 0; }
+#body #stage { min-width: 0; }
+#pageSidebar { width: 148px; flex: none; overflow: hidden; background: var(--surface); border-right: 1px solid var(--line); display: flex; }
+#pageSidebar[hidden] { display: none; }
+#pageThumbs { list-style: none; margin: 0; padding: 10px 0; width: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.thumb { position: relative; width: 112px; border-radius: 8px; }
+.thumb-btn { display: block; position: relative; padding: 3px; width: 100%; height: auto; border: 2px solid transparent; border-radius: 8px; background: transparent; }
+.thumb-btn:hover { background: var(--surface-2); }
+.thumb.current .thumb-btn { border-color: var(--acc); }
+.thumb canvas { position: static; display: block; inset: auto; width: auto; height: auto; background: #fff; cursor: pointer; border-radius: 3px; box-shadow: 0 0 0 1px var(--line-2); }
+.thumb-no { position: absolute; left: 7px; bottom: 7px; min-width: 18px; padding: 0 4px; border-radius: 9px; font-size: 11px; line-height: 18px; text-align: center; background: var(--surface); color: var(--fg-2); box-shadow: 0 0 0 1px var(--line); }
+.thumb.current .thumb-no { background: var(--acc); color: var(--acc-fg); box-shadow: none; }
+.thumb-more { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; min-width: 24px; padding: 0; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); opacity: 0; color: var(--fg); }
+.thumb:hover .thumb-more, .thumb:focus-within .thumb-more { opacity: 1; }
+.thumb.dragging { opacity: .45; }
+.thumb.drop-before::before, .thumb.drop-after::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--acc); }
+.thumb.drop-before::before { top: -7px; } .thumb.drop-after::after { bottom: -7px; }
+#sidebarToggle.on { background: var(--surface-3); }
+#thumbMenu { position: fixed; z-index: 30; display: flex; flex-direction: column; padding: 5px; min-width: 180px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-2); }
+#thumbMenu button { justify-content: flex-start; height: 34px; padding: 0 12px; border-radius: 8px; }
+#pageMenuPop .rule { height: 1px; margin: 4px 6px; background: var(--line); }
+#editor.has-sidebar .palette { left: 162px; }
