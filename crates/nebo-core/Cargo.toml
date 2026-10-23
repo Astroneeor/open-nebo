@@ -6,7 +6,7 @@ license = "MIT"
 description = "Reader/writer for MyScript Nebo (.nebo) style iink packages, with Syncthing-safe saving"
 
 [dependencies]
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
